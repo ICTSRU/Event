@@ -1,5 +1,9 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v1.9 — 2026-10-11
+- Admin console header: **قاعدة البيانات** and **الإعدادات** buttons hidden.
+- Settings still reachable by opening `index.html#settings`, and open automatically if the admin key or connection fails.
+
 ## v1.8 — 2026-10-11
 - Redesigned thank-you e-mail to match the check-in page: logo band (university right, ICTD left), purple event header with location and Arabic long date, blue stripe, green check badge with "تم تسجيل حضورك بنجاح / Your attendance has been recorded", bilingual thanks, ITOC footer.
 - Logos embedded as inline images (new `EmailAssets.gs`) — displayed in Outlook/Gmail without "download pictures".

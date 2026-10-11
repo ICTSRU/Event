@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v2.9)
+/* SRU Event Attendance & Management Platform — API client (v3.0)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -99,7 +99,7 @@
         const e = find(b.id); return e ? Promise.resolve({ ok: true, event: e }) : fail('Event not found');
       }
       case 'listEvents':
-        return Promise.resolve({ ok: true, quota: 100, events: d.events.map(e => Object.assign({}, e, { attendees: d.att.filter(a => a.eventId === e.id).length })).sort((a, b) => String(b.start).localeCompare(a.start)) });
+        return Promise.resolve({ ok: true, quota: 100, version: cfg.VERSION, events: d.events.map(e => Object.assign({}, e, { attendees: d.att.filter(a => a.eventId === e.id).length })).sort((a, b) => String(b.start).localeCompare(a.start)) });
       case 'createEvent': {
         const e = Object.assign({}, b.event, { id: newId(), status: 'Open', createdAt: nowIso() });
         if (!e.name || !e.location || !e.start) return fail('Name, location and start time are required');

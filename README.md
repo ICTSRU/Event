@@ -1,4 +1,4 @@
-# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v2.9
+# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v3.0
 
 QR-based attendance for any event: the organizer creates an event, prints its QR code, visitors scan and check in with name + e-mail, receive an automatic thank-you e-mail, and every check-in is stored in Google Sheets. The admin console produces attendance reports and sends e-mails to all attendees of an event.
 

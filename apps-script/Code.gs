@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 2.9
+ * Version: 3.0
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,12 +13,12 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '2.9';
+const APP_VERSION = '3.0';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
 
-// 'Agenda' (column K) was added in v2.9 — existing sheets get the header automatically
+// 'Agenda' (column K) was added in v3.0 — existing sheets get the header automatically
 const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
   'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda'];
 const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
@@ -287,7 +287,7 @@ function listEvents_() {
     e.attendees = counts[r.EventID] || 0;
     return e;
   }).sort(function (a, b) { return String(b.start).localeCompare(String(a.start)); });
-  return { ok: true, events: events, quota: MailApp.getRemainingDailyQuota() };
+  return { ok: true, events: events, quota: MailApp.getRemainingDailyQuota(), version: APP_VERSION };
 }
 
 function validateEvent_(e) {

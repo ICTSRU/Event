@@ -1,5 +1,10 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v3.0 — 2026-10-11
+- Admin console now detects when the Apps Script backend runs older code than the pages and shows a red banner with the exact update steps (root cause of "agenda not shown": the server was still on pre-v2.9 code, so the Agenda column was never created or saved).
+- After saving an event with an agenda, a warning appears if the server did not store it.
+- Backend: `listEvents` returns `version`.
+
 ## v2.9 — 2026-10-11
 - **Event agenda (برنامج الفعالية):** the new/edit event form has an agenda editor — add items line by line (from, to, item, presenter), reorder (↑ ↓), delete; Enter adds the next line; the next item's start time is pre-filled from the previous item's end (first item from the event start). Up to 40 items.
 - Agenda is shown on: the event page in the admin console, the visitor check-in page, the thank-you e-mail (Outlook-safe table) and the printable QR poster (first 10 items).

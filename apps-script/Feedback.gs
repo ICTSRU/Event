@@ -1,6 +1,6 @@
 /**
  * SRU Event Attendance & Management Platform — Event evaluation (feedback)
- * Version: 2.9
+ * Version: 3.0
  *
  * • One overall-satisfaction question on a 5-point Likert scale + one open question (suggestions)
  * • Personal signed link per attendee (no login, cannot be forged or reused for other e-mails)

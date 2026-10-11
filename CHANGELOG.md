@@ -1,5 +1,14 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.4 — 2026-10-11
+- Evaluation tab: **إرسال نسخة تجريبية لي** — sends one copy of the evaluation e-mail to a chosen address (default `TEST_EMAIL` in `config.js`, remembered per browser).
+- Test copies carry preview links (`&test=1`, separately signed): the evaluation page opens in preview mode, works without an attendance record, and never saves the answer. Subject is prefixed with "[نسخة تجريبية · TEST]"; logged in `MailLog`.
+- Backend: new admin action `testFeedback`.
+
+## v2.3 — 2026-10-11
+- Fix: evaluation e-mail rating buttons broke apart in Outlook desktop (Word rendering engine). Buttons are now table cells with plain links — consistent in Outlook, Gmail and mobile.
+- Fix: `check.png` appeared as an attachment in the evaluation and bulk e-mails. Each e-mail now embeds only the images it uses.
+
 ## v2.2 — 2026-10-11
 - **Event evaluation (تقييم الفعالية):**
   - Evaluation e-mail with one overall-satisfaction question on a 5-point Likert scale (clickable 1–5 buttons) and an open question for suggestions.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تقييم الفعالية | Event Evaluation — v2.2</title>
+<title>تقييم الفعالية | Event Evaluation — v2.4</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -88,7 +88,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.2</span></span>
+    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.4</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -103,6 +103,7 @@
   const icons = () => { try { lucide.createIcons(); } catch (e) {} };
   const qs = new URLSearchParams(location.search);
   const P = { id: qs.get('e') || '', email: (qs.get('m') || '').toLowerCase(), t: qs.get('t') || '' };
+  if (qs.get('test') === '1') P.test = '1';
   const LABELS = [['غير راضٍ إطلاقًا', 'Very dissatisfied'], ['غير راضٍ', 'Dissatisfied'], ['محايد', 'Neutral'], ['راضٍ', 'Satisfied'], ['راضٍ جدًا', 'Very satisfied']];
   let rating = parseInt(qs.get('r'), 10) || 0;
 
@@ -138,6 +139,10 @@
       if (!rating) rating = r.previous.rating;
       $('comment').value = r.previous.comment || ''; $('cnt').textContent = $('comment').value.length;
       $('msg').innerHTML = '<div class="alert info">سبق أن قيّمت هذه الفعالية — يمكنك تعديل تقييمك. <span class="en">You can update your previous answer.</span></div>';
+    }
+    if (r.test) {
+      $('hello').innerHTML = '<div class="alert warn" style="margin:0">وضع المعاينة — هذه نسخة تجريبية، ولن يُحفظ ردك أو يظهر في النتائج. <span class="en">Preview mode — your answer will not be saved.</span></div>';
+      $('doneText').textContent = 'وضع المعاينة: لم يُحفظ الرد. · Preview: nothing was saved.';
     }
     renderLikert();
     $('loading').classList.add('hidden'); $('app').classList.remove('hidden');

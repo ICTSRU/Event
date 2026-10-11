@@ -1,5 +1,5 @@
 /**
- * Email assets (v2.2) — logos embedded as inline images so Outlook/Gmail show them without 'download pictures'.
+ * Email assets (v2.4) — logos embedded as inline images so Outlook/Gmail show them without 'download pictures'.
  * Generated from assets/*.png. Do not edit by hand.
  */
 const EMAIL_ASSETS_ = {
@@ -9,9 +9,10 @@ const EMAIL_ASSETS_ = {
   check: 'iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAIAAABMXPacAAADY0lEQVR42u2dS1IcMRBENRWs2LHjJj4Pt+AIvoXPw0nMyl6Z7bCAGKDDMfRHlZklpVZEQMSM3qssSdM99Ol8PrcK4/nl76a/v7+9KzGvk6aArbjrKhESkAFdXwZfAJK7oAmmAC56EQ0EATrcFUxABSijZ2kACaiCHq8hXUBF9EgNYfrcKWQlYAD0mCiE6XMn1TkBQ6JPjUKYPneaYfrcyXZoQVOh796OwvS50w/T5zoI0+c6CNPnOgjT5zoI0+c6CNPnOggj445w+XNDEKbPdRCmz3XgNUB+DXD5p4YgTJ/rwC1IuAW5/AEhCNPnOnALkmxBLn9YCJwAvQS4/JEhcALEEuDyB4fACRA+iHmgBbj/4LvQjYksxo+fD28/PD3+Arzcx72hLv8L+s8jScPlplKvAdfoexHm088WE+4/lNq/AA/Xvs8B0vSz90Jh+vwETLgArKSfWv5v2MO1z2o+k7YgKfreBZHpTydAYdszrwBB+q210+9/f0yfRX+WBMjSn0KAMv3xBYgcdycVoLbln0tACfoNf00Yc8W1Cn3oNhR2xbUQfX4L6r5I1qKPE4C56FqOvsoi3MVBRfpCu6CDDorSxwlYM/PdDurSlzsH7HBQmj5UwEoEmxxUp49OQF8HA9BvrQX4oR0ZOahL//72jrAGdHEg/iGz+iJ80MEw9Jm7oN0ORqJP3obucDAYff45YJOD8ei/C+A+zg+8L5LaAqmchHuVbbnyF/oo4ji7ivSb1GdBRwgWpf8hQOT5uvs4VqSv+zXVrTTr1r6ogE1Mq9P/IkDqketryNal/xm17o1Z1/kOUPv/ESAVgiuUS9NfQF4+yE3zG5Pg/2BiASOPhYC4/muPVPrN35JUPAc4BLDydwJUT8IOAab8nQDVBDgEmPL/JgF2kE3fLUi4BTkEgPJflQA7yKPvFiTfghyC1PLfkAA7yKC/rQXZQQYorwEV1gCHIA9RZL+A6fdvQXbQEUsgX8z0ey7CdtAFRbBe2PT7bEMnd3B8+sv7gnaP2W4o6lV5ofaGpqLf+SQ8iYO+0+zWgmZoRxkVFlXe6JD0sxIwWBRS6ynqvvUB6KcnoHQUMNUDElBLAzK4UAH6GvA9kyBA0ARxrWIKUNBA3ybwBVBM6GzPhARky9DcE4sKOK6kyhHkFVyj4iodms3mAAAAAElFTkSuQmCC'
 };
 
-function emailImages_() {
+// Only attach the images an e-mail actually uses — unused inline images show up as attachments in Outlook
+function emailImages_(names) {
   const o = {};
-  Object.keys(EMAIL_ASSETS_).forEach(function (k) {
+  (names || Object.keys(EMAIL_ASSETS_)).forEach(function (k) {
     o[k] = Utilities.newBlob(Utilities.base64Decode(EMAIL_ASSETS_[k]), 'image/png', k + '.png');
   });
   return o;

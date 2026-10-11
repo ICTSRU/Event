@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 2.2
+ * Version: 2.4
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '2.2';
+const APP_VERSION = '2.4';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
@@ -101,6 +101,7 @@ function doPost(e) {
       case 'dashboard': return json_(dashboard_());
       case 'feedbackStatus': return json_(feedbackStatus_(body.id));
       case 'sendFeedback': return json_(sendFeedback_(body));
+      case 'testFeedback': return json_(testFeedback_(body));
       case 'sendBulk': return json_(sendBulk_(body));
       case 'quota': return json_({ ok: true, remaining: MailApp.getRemainingDailyQuota() });
       case 'verify': return json_({ ok: true, sheet: ss_().getName(), sheetUrl: ss_().getUrl() });
@@ -330,7 +331,7 @@ function sendBulk_(b) {
   });
 
   let quota = MailApp.getRemainingDailyQuota();
-  const images = emailImages_();
+  const images = emailImages_(['sru', 'ictd', 'itoc']);
   let sent = 0, failed = 0, skipped = 0;
   unique.forEach(function (p) {
     if (quota <= 0) { skipped++; return; }
@@ -459,7 +460,7 @@ function sendThankYou_(ev, name, email) {
     subject: 'شكرًا لحضورك | Thank you for joining — ' + ev.EventName,
     name: SENDER_NAME,
     htmlBody: emailShell_(ev, inner, { check: true }),
-    inlineImages: emailImages_(),
+    inlineImages: emailImages_(['sru', 'ictd', 'itoc', 'check']),
     body: 'تم تسجيل حضورك بنجاح — ' + ev.EventName + '\nThank you for joining ' + ev.EventName + ', ' + name + '. Your attendance has been recorded.'
   });
 }

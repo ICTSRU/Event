@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v2.2)
+/* SRU Event Attendance & Management Platform — API client (v2.4)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -107,12 +107,14 @@
         return Promise.resolve({ ok: true, events: d.events, attendance: d.att.map(a => ({ e: a.eventId, t: a.time, n: a.name, m: a.email, s: a.thankYou })), feedback: (d.fb || []), generatedAt: nowIso() });
       case 'fbInfo': {
         const e = find(b.id); if (!e) return fail('Event not found');
+        if (String(b.test) === '1') return Promise.resolve({ ok: true, event: e, name: 'نسخة تجريبية · Test', test: true, previous: null });
         const em = String(b.email || '').toLowerCase();
         const a = d.att.find(x => x.eventId === e.id && x.email === em); if (!a) return fail('رابط التقييم غير صالح | Invalid evaluation link');
         const prev = (d.fb || []).find(x => x.e === e.id && x.m === em);
         return Promise.resolve({ ok: true, event: e, name: a.name, previous: prev ? { rating: prev.r, comment: prev.c } : null });
       }
       case 'feedback': {
+        if (String(b.test) === '1') return Promise.resolve({ ok: true, test: true });
         const em = String(b.email || '').toLowerCase(); const r = +b.r;
         if (!(r >= 1 && r <= 5)) return fail('يرجى اختيار التقييم | Please select a rating');
         d.fb = d.fb || []; const prev = d.fb.find(x => x.e === b.id && x.m === em);
@@ -125,6 +127,8 @@
         const n = new Set(d.att.filter(a => a.eventId === b.id).map(a => a.email)).size;
         return Promise.resolve({ ok: true, attendees: n, responses: fb.length, average: fb.length ? Math.round(fb.reduce((s, x) => s + x.r, 0) / fb.length * 100) / 100 : 0, sentAt: (d.fbSent || {})[b.id] || '' });
       }
+      case 'testFeedback':
+        return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(b.to || '')) ? Promise.resolve({ ok: true, to: b.to, demo: true }) : fail('بريد غير صالح | Invalid e-mail');
       case 'sendFeedback': {
         d.fbSent = d.fbSent || {}; d.fbSent[b.id] = nowIso(); save(d);
         const answered = new Set((d.fb || []).filter(x => x.e === b.id).map(x => x.m));

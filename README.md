@@ -1,4 +1,4 @@
-# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v1.7
+# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v1.8
 
 QR-based attendance for any event: the organizer creates an event, prints its QR code, visitors scan and check in with name + e-mail, receive an automatic thank-you e-mail, and every check-in is stored in Google Sheets. The admin console produces attendance reports and sends e-mails to all attendees of an event.
 
@@ -13,6 +13,7 @@ QR-based attendance for any event: the organizer creates an event, prints its QR
 | `assets/sru-theme.css` | SRU identity tokens (purple #501e8c, blue #0a6eaa, Cairo, RTL) |
 | `assets/logo-*.png` | **Add these:** `logo-sru.png`, `logo-ictd.png`, `logo-itoc.png` (text fallbacks show until added) |
 | `apps-script/Code.gs` | Backend — Sheets storage, thank-you e-mail, reports, bulk e-mail |
+| `apps-script/EmailAssets.gs` | Logos and check icon embedded in e-mails (inline images) — add as a second script file |
 | `apps-script/appsscript.json` | Manifest (Asia/Riyadh, minimal scopes, Web App settings) |
 
 ## Data model (Google Sheet)
@@ -26,7 +27,7 @@ QR-based attendance for any event: the organizer creates an event, prints its QR
 ## Setup (≈10 minutes)
 
 1. **Create a Google Sheet** (e.g. *ICTD Event Attendance*) using the account that should send the e-mails.
-2. **Extensions → Apps Script.** Replace `Code.gs` with `apps-script/Code.gs`. Enable *Project Settings → Show appsscript.json* and paste `apps-script/appsscript.json`.
+2. **Extensions → Apps Script.** Replace `Code.gs` with `apps-script/Code.gs`, then add a new script file **EmailAssets** (＋ → Script) and paste `apps-script/EmailAssets.gs`. Enable *Project Settings → Show appsscript.json* and paste `apps-script/appsscript.json`.
 3. Run **`setup()`** once and approve permissions. Open *Executions / Logs* and copy the **ADMIN_KEY** (stored in *Project Settings → Script properties*; change it there any time).
 4. **Deploy → New deployment → Web app** — *Execute as: Me*, *Who has access: Anyone*. Copy the `/exec` URL.
 5. Put the URL in `assets/config.js` → `API_URL` (or paste it in the console under **الإعدادات / Settings**).

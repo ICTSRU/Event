@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v1.7</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v1.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -66,7 +66,7 @@
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v1.7</span>
+      <span class="ver en">v1.8</span>
       <a class="btn secondary sm" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
       <button class="btn secondary sm" id="btnSettings"><i data-lucide="settings"></i> الإعدادات</button>
     </div>
@@ -183,7 +183,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img src="assets/logo-sru.png" alt="" onerror="this.remove()">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v1.7</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v1.8</div></div>
             <img src="assets/logo-ictd.png" alt="" onerror="this.remove()">
           </div>
         </div>
@@ -271,7 +271,7 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v1.7</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v1.8</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC — IT Operations Center" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -520,7 +520,7 @@
       '</style></head><body><div class="band"><img src="' + logo('logo-ictd.png') + '" onerror="this.style.visibility=\'hidden\'"><img src="' + logo('logo-sru.png') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
       '<h1>' + esc(e.name) + '</h1><div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v1.7</div>' +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v1.8</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -565,7 +565,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v1.7</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v1.8</p>';
   }
 
   $('btnCsv').onclick = () => {

@@ -1,5 +1,10 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v1.8 — 2026-10-11
+- Redesigned thank-you e-mail to match the check-in page: logo band (university right, ICTD left), purple event header with location and Arabic long date, blue stripe, green check badge with "تم تسجيل حضورك بنجاح / Your attendance has been recorded", bilingual thanks, ITOC footer.
+- Logos embedded as inline images (new `EmailAssets.gs`) — displayed in Outlook/Gmail without "download pictures".
+- Table-based, inline-styled layout for Outlook compatibility; bulk e-mails use the same branded shell.
+
 ## v1.7 — 2026-10-11
 - Fix: on iPhone/Safari the check-in page could show "Network error" although the attendance was saved and the thank-you e-mail sent.
   - Visitor actions (`getEvent`, `checkin`, `checkStatus`) now use a simple GET request, which follows the Apps Script redirect reliably.

@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 1.7
+ * Version: 1.8
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
@@ -312,6 +312,7 @@ function sendBulk_(b) {
   });
 
   let quota = MailApp.getRemainingDailyQuota();
+  const images = emailImages_();
   let sent = 0, failed = 0, skipped = 0;
   unique.forEach(function (p) {
     if (quota <= 0) { skipped++; return; }
@@ -321,7 +322,8 @@ function sendBulk_(b) {
         to: p.Email,
         subject: fill_(subject, ev, p.FullName),
         name: SENDER_NAME,
-        htmlBody: emailShell_(ev, '<div style="white-space:pre-line">' + esc_(body) + '</div>'),
+        htmlBody: emailShell_(ev, '<div dir="auto" style="white-space:pre-line;text-align:start">' + esc_(body) + '</div>'),
+        inlineImages: images,
         body: body
       });
       sent++; quota--;
@@ -359,33 +361,87 @@ function esc_(s) {
   });
 }
 
-function emailShell_(ev, inner) {
+const ITOC_URL = 'https://ictsru.github.io/ITOC/#forms';
+const FONT_ = "Cairo,'Segoe UI',Tahoma,Arial,sans-serif";
+
+// Arabic long date, e.g. "الخميس، 15 أكتوبر 2026 في 10:00 ص"
+function fmtArDate_(s) {
+  if (!s) return '';
+  const d = new Date(String(s).slice(0, 16) + ':00');
+  if (isNaN(d)) return s;
+  const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  let h = d.getHours();
+  const ap = h < 12 ? 'ص' : 'م';
+  h = h % 12 || 12;
+  const mm = ('0' + d.getMinutes()).slice(-2);
+  return days[d.getDay()] + '، ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear() +
+    ' في ' + ('0' + h).slice(-2) + ':' + mm + ' ' + ap;
+}
+
+/**
+ * Branded e-mail layout matching the check-in page.
+ * Table-based with inline styles for Outlook/Gmail; logos are inline (cid:) images.
+ * opts.check = true  → green check badge + "attendance recorded" headline
+ */
+function emailShell_(ev, inner, opts) {
+  opts = opts || {};
+  const purple = '#501e8c', ink = '#241436', muted = '#6b5a80';
+  const hero =
+    '<tr><td style="background:' + purple + ';padding:22px 26px;font-family:' + FONT_ + ';color:#ffffff;text-align:right" dir="rtl">' +
+      '<div style="font-size:13px;color:#e4d9f3">منصة تسجيل حضور وإدارة الفعاليات · <span dir="ltr" style="white-space:nowrap">Attendance check-in</span></div>' +
+      '<div style="font-size:24px;font-weight:700;line-height:1.5;margin:6px 0 10px">' + esc_(ev.EventName) + '</div>' +
+      '<div style="font-size:15px;line-height:1.9">📍 ' + esc_(ev.Location) + '</div>' +
+      '<div style="font-size:15px;line-height:1.9">🗓️ ' + esc_(fmtArDate_(ev.StartDateTime)) + '</div>' +
+    '</td></tr>' +
+    '<tr><td style="background:#0a6eaa;height:6px;line-height:6px;font-size:0">&nbsp;</td></tr>';
+  const badge = opts.check
+    ? '<tr><td align="center" style="padding:28px 26px 4px"><img src="cid:check" width="64" height="64" alt="✓" style="display:block;border:0"></td></tr>' +
+      '<tr><td align="center" dir="rtl" style="font-family:' + FONT_ + ';padding:8px 26px 0;font-size:24px;font-weight:700;color:#3a1464">تم تسجيل حضورك بنجاح</td></tr>' +
+      '<tr><td align="center" dir="ltr" style="font-family:' + FONT_ + ';padding:4px 26px 0;font-size:15px;color:' + muted + '">Your attendance has been recorded</td></tr>'
+    : '';
   return '' +
-    '<div style="background:#f7f5fb;padding:24px 12px;font-family:Cairo,Tahoma,Arial,sans-serif">' +
-    '<div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid rgba(80,30,140,.12);border-radius:4px;overflow:hidden">' +
-    '<div style="background:#501e8c;color:#fff;padding:18px 22px">' +
-    '<div style="font-size:12px;opacity:.85">جامعة سليمان الراجحي | Sulaiman Al Rajhi University</div>' +
-    '<div style="font-size:19px;font-weight:700;margin-top:4px">' + esc_(ev.EventName) + '</div></div>' +
-    '<div style="height:4px;background:#0a6eaa"></div>' +
-    '<div style="padding:22px;color:#241436;font-size:15px;line-height:1.8">' + inner + '</div>' +
-    '<div style="padding:14px 22px;background:#f0ebf8;color:#6b5a80;font-size:12px">' +
-    '📍 ' + esc_(ev.Location) + ' &nbsp;|&nbsp; 🗓 ' + esc_(fmtDate_(ev.StartDateTime)) +
-    '<br>الإدارة التنفيذية للاتصالات وتقنية المعلومات — Executive Directorate of Communications &amp; IT' +
-    '</div></div></div>';
+  '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>' +
+  '<body style="margin:0;padding:0;background:#f7f5fb">' +
+  '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f7f5fb"><tr><td align="center" style="padding:24px 10px">' +
+  '<table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:#ffffff;border:1px solid #e6dff0;border-collapse:collapse">' +
+    // logo band — university right, ICTD left (as on the page)
+    '<tr><td style="padding:14px 22px;border-bottom:1px solid #eee8f5">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+        '<td align="left" valign="middle"><img src="cid:ictd" height="48" alt="ICTD" style="display:block;border:0;height:48px;width:auto"></td>' +
+        '<td align="right" valign="middle"><img src="cid:sru" height="40" alt="Sulaiman Alrajhi University" style="display:block;border:0;height:40px;width:auto;margin-left:auto"></td>' +
+      '</tr></table>' +
+    '</td></tr>' +
+    '<tr><td style="padding:18px 18px 0">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border:1px solid #e6dff0;border-collapse:collapse">' +
+        hero + badge +
+        '<tr><td style="padding:18px 26px 26px;font-family:' + FONT_ + ';color:' + ink + ';font-size:15px;line-height:1.9">' + inner + '</td></tr>' +
+      '</table>' +
+    '</td></tr>' +
+    // footer — ITOC left, directorate right
+    '<tr><td style="padding:18px 22px;border-top:1px solid #eee8f5;margin-top:18px">' +
+      '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>' +
+        '<td align="left" valign="middle"><a href="' + ITOC_URL + '"><img src="cid:itoc" height="30" alt="ITOC — IT Operations Center" style="display:block;border:0;height:30px;width:auto"></a></td>' +
+        '<td align="right" valign="middle" dir="rtl" style="font-family:' + FONT_ + ';font-size:12px;color:' + muted + '">الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span dir="ltr">v' + APP_VERSION + '</span></td>' +
+      '</tr></table>' +
+    '</td></tr>' +
+  '</table>' +
+  '<div style="font-family:' + FONT_ + ';font-size:11px;color:#9a8fae;padding-top:10px" dir="rtl">رسالة آلية من منصة تسجيل حضور وإدارة الفعاليات — جامعة سليمان الراجحي</div>' +
+  '</td></tr></table></body></html>';
 }
 
 function sendThankYou_(ev, name, email) {
-  const ar = '<div dir="rtl" style="text-align:right">' +
-    '<p>مرحبًا <b>' + esc_(name) + '</b>،</p>' +
-    '<p>شكرًا لتسجيل حضورك في <b>' + esc_(ev.EventName) + '</b>. يسعدنا انضمامك إلينا، ونتمنى لك تجربة مفيدة وممتعة.</p></div>';
-  const en = '<div dir="ltr" style="text-align:left;border-top:1px solid #eee;margin-top:14px;padding-top:14px">' +
-    '<p>Hello <b>' + esc_(name) + '</b>,</p>' +
-    '<p>Thank you for joining <b>' + esc_(ev.EventName) + '</b>. Your attendance has been recorded — we hope you enjoy the event.</p></div>';
+  const inner =
+    '<div dir="rtl" style="text-align:center;font-size:17px;color:#241436">شكرًا لانضمامك إلينا <b>' + esc_(name) + '</b> 🌟</div>' +
+    '<div dir="ltr" style="text-align:center;font-size:14px;color:#6b5a80;margin-bottom:16px">Thank you for joining us, ' + esc_(name) + '!</div>' +
+    '<div dir="rtl" style="text-align:right;border-top:1px solid #eee8f5;padding-top:14px">يسعدنا حضورك في <b>' + esc_(ev.EventName) + '</b>، ونتمنى لك تجربة مفيدة وممتعة.</div>' +
+    '<div dir="ltr" style="text-align:left;color:#6b5a80;font-size:14px">We are glad to have you at <b>' + esc_(ev.EventName) + '</b> — we hope you enjoy the event.</div>';
   MailApp.sendEmail({
     to: email,
     subject: 'شكرًا لحضورك | Thank you for joining — ' + ev.EventName,
     name: SENDER_NAME,
-    htmlBody: emailShell_(ev, ar + en),
-    body: 'Thank you for joining ' + ev.EventName + ', ' + name + '. Your attendance has been recorded.'
+    htmlBody: emailShell_(ev, inner, { check: true }),
+    inlineImages: emailImages_(),
+    body: 'تم تسجيل حضورك بنجاح — ' + ev.EventName + '\nThank you for joining ' + ev.EventName + ', ' + name + '. Your attendance has been recorded.'
   });
 }

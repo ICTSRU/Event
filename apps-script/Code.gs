@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 2.8
+ * Version: 2.9
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,13 +13,14 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '2.8';
+const APP_VERSION = '2.9';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
 
+// 'Agenda' (column K) was added in v2.9 — existing sheets get the header automatically
 const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
-  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt'];
+  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda'];
 const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
 const LOG_HEAD = ['Timestamp', 'EventID', 'Subject', 'Recipients', 'Sent', 'Failed', 'Notes'];
 
@@ -57,6 +58,11 @@ function ensureSheet_(ss, name, head) {
     sh.getRange(1, 1, 1, head.length).setValues([head])
       .setFontWeight('bold').setBackground('#501e8c').setFontColor('#ffffff');
     sh.setFrozenRows(1);
+  } else if (sh.getLastColumn() < head.length) {
+    // schema upgrade: append any header columns added in newer versions
+    const from = sh.getLastColumn() + 1;
+    sh.getRange(1, from, 1, head.length - from + 1).setValues([head.slice(from - 1)])
+      .setFontWeight('bold').setBackground('#501e8c').setFontColor('#ffffff');
   }
   return sh;
 }
@@ -181,8 +187,38 @@ function publicEvent_(r) {
   return {
     id: r.EventID, name: r.EventName, location: r.Location,
     start: r.StartDateTime, end: r.EndDateTime, organizer: r.Organizer,
-    description: r.Description, status: r.Status
+    description: r.Description, status: r.Status, agenda: parseAgenda_(r.Agenda)
   };
+}
+
+/* ---------------- event agenda (برنامج الفعالية) ---------------- */
+function parseAgenda_(s) {
+  try { const a = JSON.parse(s || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+}
+
+function cleanAgenda_(list) {
+  if (!Array.isArray(list)) return [];
+  const t = function (v) { v = String(v || '').trim(); return /^\d{2}:\d{2}$/.test(v) ? v : ''; };
+  const s = function (v, n) { return String(v == null ? '' : v).replace(/[\u0000-\u001f]/g, ' ').trim().slice(0, n); };
+  return list.slice(0, 40).map(function (r) {
+    return { from: t(r.from), to: t(r.to), title: s(r.title, 200), speaker: s(r.speaker, 120) };
+  }).filter(function (r) { return r.title; });
+}
+
+function agendaHtml_(agenda) {
+  if (!agenda || !agenda.length) return '';
+  const th = 'style="background:#f0ebf8;color:#3a1464;font-family:' + FONT_ + ';font-size:13px;padding:8px 10px;text-align:right;border-bottom:1px solid #e6dff0"';
+  const td = 'font-family:' + FONT_ + ';font-size:14px;color:#241436;padding:8px 10px;border-bottom:1px solid #eee8f5;text-align:right;vertical-align:top';
+  return '<div dir="rtl" style="text-align:right;font-weight:bold;font-size:16px;color:#3a1464;margin:18px 0 8px">برنامج الفعالية · <span dir="ltr">Agenda</span></div>' +
+    '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="border:1px solid #e6dff0;border-collapse:collapse">' +
+    '<tr><td ' + th + ' width="110">الوقت</td><td ' + th + '>الفقرة</td><td ' + th + ' width="150">المقدّم</td></tr>' +
+    agenda.map(function (a) {
+      // RTL order: start time on the right (read first), each time isolated as LTR
+      const time = a.from ? '<span dir="ltr">' + esc_(a.from) + '</span>' + (a.to ? ' – <span dir="ltr">' + esc_(a.to) + '</span>' : '') : '';
+      return '<tr><td style="' + td + ';white-space:nowrap">' + time + '</td>' +
+        '<td style="' + td + ';font-weight:bold">' + esc_(a.title) + '</td>' +
+        '<td style="' + td + ';color:#6b5a80">' + esc_(a.speaker) + '</td></tr>';
+    }).join('') + '</table>';
 }
 
 /* ------------------------------------------------------------------ */
@@ -259,7 +295,8 @@ function validateEvent_(e) {
   const out = {
     name: clean_(e.name, 200), location: clean_(e.location, 200),
     start: clean_(e.start, 25), end: clean_(e.end, 25),
-    organizer: clean_(e.organizer, 120), description: clean_(e.description, 1000)
+    organizer: clean_(e.organizer, 120), description: clean_(e.description, 1000),
+    agenda: JSON.stringify(cleanAgenda_(e.agenda))
   };
   if (!out.name) throw new Error('Event name is required');
   if (!out.location) throw new Error('Location is required');
@@ -272,8 +309,9 @@ function createEvent_(e) {
   const v = validateEvent_(e);
   const id = newId_();
   const ts = now_();
+  ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);   // adds the Agenda header on older sheets
   sheet_(SH_EVENTS).appendRow([id, v.name, v.location, v.start, v.end, v.organizer,
-    v.description, 'Open', ts, ts]);
+    v.description, 'Open', ts, ts, v.agenda]);
   return { ok: true, id: id };
 }
 
@@ -283,7 +321,8 @@ function updateEvent_(e) {
   const v = validateEvent_(e);
   sheet_(SH_EVENTS).getRange(r._row, 2, 1, 6)
     .setValues([[v.name, v.location, v.start, v.end, v.organizer, v.description]]);
-  sheet_(SH_EVENTS).getRange(r._row, 10).setValue(now_());
+  ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);
+  sheet_(SH_EVENTS).getRange(r._row, 10, 1, 2).setValues([[now_(), v.agenda]]);
   return { ok: true, id: r.EventID };
 }
 
@@ -483,7 +522,8 @@ function sendThankYou_(ev, name, email) {
     '<div dir="rtl" style="text-align:center;font-size:17px;color:#241436">شكرًا لانضمامك إلينا <b>' + esc_(name) + '</b> 🌟</div>' +
     '<div dir="ltr" style="text-align:center;font-size:14px;color:#6b5a80;margin-bottom:16px">Thank you for joining us, ' + esc_(name) + '!</div>' +
     '<div dir="rtl" style="text-align:right;border-top:1px solid #eee8f5;padding-top:14px">يسعدنا حضورك في <b>' + esc_(ev.EventName) + '</b>، ونتمنى لك تجربة مفيدة وممتعة.</div>' +
-    '<div dir="ltr" style="text-align:left;color:#6b5a80;font-size:14px">We are glad to have you at <b>' + esc_(ev.EventName) + '</b> — we hope you enjoy the event.</div>';
+    '<div dir="ltr" style="text-align:left;color:#6b5a80;font-size:14px">We are glad to have you at <b>' + esc_(ev.EventName) + '</b> — we hope you enjoy the event.</div>' +
+    agendaHtml_(parseAgenda_(ev.Agenda));
   MailApp.sendEmail({
     to: email,
     subject: 'شكرًا لحضورك | Thank you for joining — ' + ev.EventName,

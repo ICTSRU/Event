@@ -1,4 +1,4 @@
-# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v2.8
+# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v2.9
 
 QR-based attendance for any event: the organizer creates an event, prints its QR code, visitors scan and check in with name + e-mail, receive an automatic thank-you e-mail, and every check-in is stored in Google Sheets. The admin console produces attendance reports and sends e-mails to all attendees of an event.
 
@@ -23,7 +23,7 @@ QR-based attendance for any event: the organizer creates an event, prints its QR
 
 | Sheet | Columns |
 |---|---|
-| `Events` | EventID, EventName, Location, StartDateTime, EndDateTime, Organizer, Description, Status (Open/Closed), CreatedAt, UpdatedAt |
+| `Events` | EventID, EventName, Location, StartDateTime, EndDateTime, Organizer, Description, Status (Open/Closed), CreatedAt, UpdatedAt, Agenda (JSON list of items: from, to, title, speaker) |
 | `Attendance` | Timestamp, EventID, EventName, FullName, Email, ThankYouSent, UserAgent |
 | `Feedback` | Timestamp, EventID, EventName, FullName, Email, Rating (1–5), Comment, UpdatedAt |
 | `MailLog` | Timestamp, EventID, Subject, Recipients, Sent, Failed, Notes |

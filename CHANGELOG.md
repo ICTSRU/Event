@@ -1,5 +1,10 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.9 — 2026-10-11
+- **Event agenda (برنامج الفعالية):** the new/edit event form has an agenda editor — add items line by line (from, to, item, presenter), reorder (↑ ↓), delete; Enter adds the next line; the next item's start time is pre-filled from the previous item's end (first item from the event start). Up to 40 items.
+- Agenda is shown on: the event page in the admin console, the visitor check-in page, the thank-you e-mail (Outlook-safe table) and the printable QR poster (first 10 items).
+- Backend: new `Agenda` column (K) in `Events`; older sheets get the header automatically (schema upgrade in `ensureSheet_`); agenda items validated and length-limited.
+
 ## v2.8 — 2026-10-11
 - Dashboard: the free-text event search is replaced by an **event dropdown** (الفعالية · Event) listing events newest first with their date; choosing one shows that event's figures only.
 - The dropdown follows the Period and Status filters (lists only matching events, shows their count) and keeps the selection when data refreshes.

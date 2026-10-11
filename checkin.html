@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تسجيل الحضور | Event Check-in — v2.8</title>
+<title>تسجيل الحضور | Event Check-in — v2.9</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -25,6 +25,12 @@
   .done h2{margin:6px 0;color:var(--purple-dark)}
   .consent{font-size:12px;color:var(--muted);margin-top:10px}
   .state{text-align:center;padding:40px 10px}
+  .agenda{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+  .agenda h3{margin:0 0 8px;font-size:15px;color:var(--purple-dark)}
+  .ag-it{display:grid;grid-template-columns:92px 1fr;gap:8px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:14px}
+  .ag-it:last-child{border-bottom:none}
+  .ag-it .tm{color:var(--purple);font-weight:700;font-size:13px;white-space:nowrap}
+  .ag-it .sp{color:var(--muted);font-size:12.5px}
 </style>
 </head>
 <body>
@@ -63,6 +69,8 @@
         <p class="consent">تُستخدم بياناتك لتوثيق الحضور والتواصل بخصوص هذه الفعالية فقط. <span class="en">Your data is used only to record attendance and contact you about this event.</span></p>
       </form>
 
+      <div id="agenda" class="agenda hidden"></div>
+
       <div id="done" class="done hidden">
         <div class="ic"><i data-lucide="check"></i></div>
         <h2 id="doneTitle">تم تسجيل حضورك بنجاح</h2>
@@ -77,7 +85,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.8</span></span>
+    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.9</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -132,6 +140,13 @@
     $('evMeta').innerHTML =
       '<span><i data-lucide="map-pin"></i> ' + esc(ev.location) + '</span>' +
       '<span><i data-lucide="calendar-clock"></i> ' + esc(fmt(ev.start)) + '</span>';
+    if (ev.agenda && ev.agenda.length) {
+      $('agenda').innerHTML = '<h3>برنامج الفعالية <span class="en muted small">Agenda</span></h3>' + ev.agenda.map(a =>
+        '<div class="ag-it"><span class="tm">' + (a.from ? '<span dir="ltr">' + esc(a.from) + '</span>' + (a.to ? ' – <span dir="ltr">' + esc(a.to) + '</span>' : '') : '') + '</span>' +
+        '<span><b>' + esc(a.title) + '</b>' + (a.speaker ? '<div class="sp">' + esc(a.speaker) + '</div>' : '') + '</span></div>').join('');
+      $('agenda').classList.remove('hidden');
+      $('agenda').parentNode.appendChild($('agenda'));   // always shown at the bottom of the card
+    }
     $('loading').classList.add('hidden'); $('app').classList.remove('hidden');
 
     let prev = null;

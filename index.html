@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v2.8</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v2.9</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -41,6 +41,24 @@
   .empty svg{width:42px;height:42px;color:var(--purple);opacity:.6}
   .toolbar{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
   .toolbar input{max-width:280px}
+  .ag-head,.ag-row{display:grid;grid-template-columns:92px 92px 1fr 190px 98px;gap:6px;align-items:center}
+  .ag-head{font-size:12.5px;font-weight:700;color:var(--muted);padding:0 2px 4px}
+  .ag-row{margin-bottom:6px}
+  .ag-row input{padding:7px 8px}
+  .ag-row .ops{display:flex;gap:3px}
+  .ag-row .ops button{border:1px solid var(--border);background:#fff;border-radius:var(--radius);width:30px;height:34px;cursor:pointer;color:var(--purple);display:flex;align-items:center;justify-content:center}
+  .ag-row .ops button:hover{background:var(--purple-light)}
+  .ag-row .ops button.del{color:var(--err)}
+  .ag-row .ops svg{width:15px;height:15px}
+  .ag-empty{color:var(--muted);font-size:13px;padding:10px;border:1px dashed var(--border);border-radius:var(--radius);text-align:center;margin-bottom:8px}
+  @media(max-width:720px){
+    .ag-head{display:none}
+    .ag-row{grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:var(--radius);padding:8px}
+    .ag-row .t,.ag-row .s{grid-column:1/-1}
+    .ag-row .ops{grid-column:1/-1;justify-content:flex-end}
+  }
+  .agenda-view{margin:12px 0 4px}
+  .agenda-view td.tm{white-space:nowrap;color:var(--purple-dark);font-weight:700;width:120px}
   .print-head{display:none}
   @media print{
     .layout{display:block}
@@ -66,7 +84,7 @@
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v2.8</span>
+      <span class="ver en">v2.9</span>
       <a class="btn secondary sm" href="dashboard.html"><i data-lucide="layout-dashboard"></i> لوحة المؤشرات</a>
       <a class="btn secondary sm hidden" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
       <button class="btn secondary sm hidden" id="btnSettings"><i data-lucide="settings"></i> الإعدادات</button>
@@ -171,6 +189,13 @@
             <label class="f">وصف مختصر <span class="en">Description</span></label>
             <textarea id="fDesc" maxlength="1000" style="min-height:80px"></textarea>
           </div>
+          <div>
+            <label class="f" style="margin-bottom:8px">برنامج الفعالية <span class="en">Agenda (optional)</span></label>
+            <div class="ag-head"><span>من · From</span><span>إلى · To</span><span>الفقرة · Item</span><span>المقدّم · Presenter</span><span></span></div>
+            <div id="agRows"></div>
+            <button type="button" class="btn secondary sm" id="btnAddAg"><i data-lucide="plus"></i> إضافة فقرة · Add item</button>
+            <span class="small muted" style="margin-inline-start:8px">يُعرض البرنامج في صفحة التسجيل وبريد الشكر وملصق QR.</span>
+          </div>
           <div id="formMsg"></div>
           <div class="actions">
             <button class="btn" type="submit" id="btnSaveEvent"><i data-lucide="save"></i> حفظ وإنشاء رمز QR</button>
@@ -184,7 +209,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img src="assets/logo-sru.png" alt="" onerror="this.remove()">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v2.8</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v2.9</div></div>
             <img src="assets/logo-ictd.png" alt="" onerror="this.remove()">
           </div>
         </div>
@@ -200,6 +225,7 @@
           </div>
         </div>
 
+        <div id="dAgenda"></div>
         <div class="tabs no-print">
           <button class="tab active" data-tab="qr"><i data-lucide="qr-code"></i> رمز QR</button>
           <button class="tab" data-tab="report"><i data-lucide="clipboard-list"></i> تقرير الحضور</button>
@@ -304,7 +330,7 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v2.8</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v2.9</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC — IT Operations Center" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -372,7 +398,7 @@
       $('btnSendFb').disabled = !pending;
     } catch (e) {
       $('fbKpis').innerHTML = '';
-      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v2.8 وانشر نسخة جديدة.' : '');
+      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v2.9 وانشر نسخة جديدة.' : '');
     }
   }
   $('fbTestTo').value = EA.store('ea_test_email') || EA.cfg.TEST_EMAIL || '';
@@ -503,6 +529,8 @@
     $('fStart').value = e ? String(e.start).slice(0, 16) : '';
     $('fEnd').value = e ? String(e.end || '').slice(0, 16) : '';
     $('fDesc').value = e ? (e.description || '') : '';
+    agenda = e && Array.isArray(e.agenda) ? e.agenda.map(a => Object.assign({}, a)) : [];
+    renderAgendaRows();
     $('formTitle').innerHTML = e
       ? '<i data-lucide="pencil"></i> تعديل الفعالية <span class="en muted small">Edit event</span>'
       : '<i data-lucide="calendar-plus"></i> تسجيل فعالية جديدة <span class="en muted small">New event</span>';
@@ -517,8 +545,11 @@
     const data = {
       id: $('fId').value, name: $('fName').value.trim(), location: $('fLocation').value.trim(),
       organizer: $('fOrganizer').value.trim(), start: $('fStart').value, end: $('fEnd').value,
-      description: $('fDesc').value.trim()
+      description: $('fDesc').value.trim(),
+      agenda: readAgenda().filter(a => a.title)
     };
+    const badTime = data.agenda.find(a => a.from && a.to && a.to < a.from);
+    if (badTime) return msg('formMsg', 'err', 'في البرنامج: وقت نهاية الفقرة «' + badTime.title + '» قبل وقت بدايتها.');
     if (!data.name || !data.location || !data.start) return msg('formMsg', 'err', 'يرجى تعبئة الحقول الإلزامية (الاسم، المكان، وقت البدء).');
     if (data.end && data.end < data.start) return msg('formMsg', 'err', 'وقت الانتهاء يجب أن يكون بعد وقت البدء.');
     const b = $('btnSaveEvent'); busy(b, true);
@@ -539,6 +570,61 @@
     renderQr();
     loadAttendance();
   }
+  /* ---------- agenda editor ---------- */
+  let agenda = [];
+  function readAgenda() {
+    return [...document.querySelectorAll('#agRows .ag-row')].map(r => ({
+      from: r.querySelector('.f1').value, to: r.querySelector('.f2').value,
+      title: r.querySelector('.t').value.trim(), speaker: r.querySelector('.s').value.trim()
+    }));
+  }
+  function renderAgendaRows(focusIdx) {
+    $('agRows').innerHTML = agenda.length ? agenda.map((a, i) =>
+      '<div class="ag-row" data-i="' + i + '">' +
+      '<input type="time" class="f1" value="' + esc(a.from || '') + '" aria-label="From">' +
+      '<input type="time" class="f2" value="' + esc(a.to || '') + '" aria-label="To">' +
+      '<input class="t" maxlength="200" placeholder="عنوان الفقرة — مثال: كلمة افتتاحية" value="' + esc(a.title || '') + '" aria-label="Item">' +
+      '<input class="s" maxlength="120" placeholder="اسم المقدّم (اختياري)" value="' + esc(a.speaker || '') + '" aria-label="Presenter">' +
+      '<span class="ops">' +
+      '<button type="button" data-op="up" title="أعلى" ' + (i === 0 ? 'disabled style="opacity:.35"' : '') + '><i data-lucide="arrow-up"></i></button>' +
+      '<button type="button" data-op="down" title="أسفل" ' + (i === agenda.length - 1 ? 'disabled style="opacity:.35"' : '') + '><i data-lucide="arrow-down"></i></button>' +
+      '<button type="button" data-op="del" class="del" title="حذف"><i data-lucide="trash-2"></i></button></span></div>').join('')
+      : '<div class="ag-empty">لا توجد فقرات بعد — اضغط «إضافة فقرة» لبناء برنامج الفعالية سطرًا بسطر.</div>';
+    icons();
+    if (focusIdx != null) { const r = document.querySelectorAll('#agRows .ag-row')[focusIdx]; if (r) r.querySelector(r.querySelector('.f1').value ? '.t' : '.f1').focus(); }
+  }
+  $('btnAddAg').onclick = () => {
+    agenda = readAgenda();
+    if (agenda.length >= 40) return msg('formMsg', 'err', 'الحد الأقصى 40 فقرة.');
+    const last = agenda[agenda.length - 1];
+    let from = last && last.to ? last.to : '';
+    if (!from && !last && $('fStart').value) from = $('fStart').value.slice(11, 16);   // first item starts with the event
+    agenda.push({ from: from, to: '', title: '', speaker: '' });
+    renderAgendaRows(agenda.length - 1);
+  };
+  $('agRows').onclick = (ev) => {
+    const b = ev.target.closest('button[data-op]'); if (!b) return;
+    agenda = readAgenda();
+    const i = +b.closest('.ag-row').dataset.i, op = b.dataset.op;
+    if (op === 'del') agenda.splice(i, 1);
+    if (op === 'up' && i > 0) [agenda[i - 1], agenda[i]] = [agenda[i], agenda[i - 1]];
+    if (op === 'down' && i < agenda.length - 1) [agenda[i + 1], agenda[i]] = [agenda[i], agenda[i + 1]];
+    renderAgendaRows();
+  };
+  // Enter in the last field adds the next item
+  $('agRows').addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter' && ev.target.matches('.s, .t')) { ev.preventDefault(); $('btnAddAg').click(); }
+  });
+  // time range for RTL pages: start on the right, each time isolated
+  function agTime(a) { return a.from ? '<span dir="ltr">' + esc(a.from) + '</span>' + (a.to ? ' – <span dir="ltr">' + esc(a.to) + '</span>' : '') : '—'; }
+  function agendaTable(list) {
+    if (!list || !list.length) return '';
+    return '<div class="agenda-view"><h3 style="margin:0 0 8px">برنامج الفعالية <span class="en muted small">Agenda</span></h3>' +
+      '<div class="tbl-wrap"><table><thead><tr><th>الوقت</th><th>الفقرة</th><th>المقدّم</th></tr></thead><tbody>' +
+      list.map(a => '<tr><td class="tm">' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td class="muted">' + esc(a.speaker || '') + '</td></tr>').join('') +
+      '</tbody></table></div></div>';
+  }
+
   function renderHead() {
     const e = current;
     $('dName').textContent = e.name;
@@ -547,6 +633,7 @@
       '<span><i data-lucide="clock"></i> ' + esc(fmt(e.start)) + (e.end ? ' → ' + esc(timeOnly(e.end)) : '') + '</span>' +
       (e.organizer ? '<span><i data-lucide="building-2"></i> ' + esc(e.organizer) + '</span>' : '') +
       '<span class="en"><i data-lucide="hash"></i> ' + esc(e.id) + '</span>';
+    $('dAgenda').innerHTML = agendaTable(e.agenda);
     $('dStatus').innerHTML = statusChip(e.status);
     $('btnToggle').innerHTML = e.status === 'Open'
       ? '<i data-lucide="lock"></i> إغلاق التسجيل' : '<i data-lucide="unlock"></i> فتح التسجيل';
@@ -601,11 +688,15 @@
       '@page{size:A4;margin:14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Cairo,Tahoma,Arial;margin:0;color:#241436;text-align:center}' +
       '.band{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:4px solid #501e8c}.band img{height:60px}' +
       'h1{color:#501e8c;font-size:34px;margin:28px 0 6px}.m{font-size:18px;color:#6b5a80}.qr{margin:26px auto;padding:16px;border:3px solid #501e8c;border-radius:8px;width:fit-content}.qr img{width:330px;height:330px;display:block}' +
+      'table.ag{margin:22px auto 0;border-collapse:collapse;width:88%;font-size:14px;text-align:right}table.ag th{background:#f0ebf8;color:#3a1464;padding:6px 10px}table.ag td{padding:6px 10px;border-bottom:1px solid #eee}table.ag td:first-child{white-space:nowrap;color:#501e8c;font-weight:700;text-align:right}' +
+      '.qr img{width:' + (((e.agenda || []).length > 5) ? '260px;height:260px' : '330px;height:330px') + '!important}' +
       '.cta{background:#501e8c;color:#fff;display:inline-block;padding:10px 26px;border-radius:4px;font-size:22px;font-weight:700}.en{direction:ltr;font-size:16px;color:#6b5a80;margin-top:6px}.f{margin-top:30px;font-size:12px;color:#6b5a80}' +
       '</style></head><body><div class="band"><img src="' + logo('logo-ictd.png') + '" onerror="this.style.visibility=\'hidden\'"><img src="' + logo('logo-sru.png') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
       '<h1>' + esc(e.name) + '</h1><div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v2.8</div>' +
+      ((e.agenda || []).length ? '<table class="ag"><tr><th>الوقت</th><th>البرنامج</th><th>المقدّم</th></tr>' + e.agenda.slice(0, 10).map(a =>
+        '<tr><td>' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td>' + esc(a.speaker || '') + '</td></tr>').join('') + '</table>' : '') +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v2.9</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -650,7 +741,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v2.8</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v2.9</p>';
   }
 
   $('btnCsv').onclick = () => {

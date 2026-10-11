@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v1.9</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v2.2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -66,7 +66,8 @@
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v1.9</span>
+      <span class="ver en">v2.2</span>
+      <a class="btn secondary sm" href="dashboard.html"><i data-lucide="layout-dashboard"></i> لوحة المؤشرات</a>
       <a class="btn secondary sm hidden" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
       <button class="btn secondary sm hidden" id="btnSettings"><i data-lucide="settings"></i> الإعدادات</button>
     </div>
@@ -183,7 +184,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img src="assets/logo-sru.png" alt="" onerror="this.remove()">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v1.9</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v2.2</div></div>
             <img src="assets/logo-ictd.png" alt="" onerror="this.remove()">
           </div>
         </div>
@@ -203,6 +204,7 @@
           <button class="tab active" data-tab="qr"><i data-lucide="qr-code"></i> رمز QR</button>
           <button class="tab" data-tab="report"><i data-lucide="clipboard-list"></i> تقرير الحضور</button>
           <button class="tab" data-tab="email"><i data-lucide="mail"></i> مراسلة الحضور</button>
+          <button class="tab" data-tab="fb"><i data-lucide="star"></i> تقييم الفعالية</button>
         </div>
 
         <!-- QR tab -->
@@ -240,6 +242,33 @@
         </div>
 
         <!-- Email tab -->
+        <div data-pane="fb" class="hidden">
+          <div class="kpis" id="fbKpis"></div>
+          <div class="grid g2" style="align-items:start">
+            <div>
+              <h3 style="margin-top:0">نموذج التقييم <span class="en muted small">What attendees receive</span></h3>
+              <div class="preview" style="white-space:normal">
+                <b>1. ما مدى رضاك العام عن الفعالية؟</b><div class="small muted en">Overall satisfaction — 5-point Likert scale</div>
+                <div style="display:flex;gap:4px;margin:8px 0;direction:ltr">
+                  <span class="chip closed">1 غير راضٍ إطلاقًا</span><span class="chip closed">2</span><span class="chip closed">3 محايد</span><span class="chip closed">4</span><span class="chip open">5 راضٍ جدًا</span>
+                </div>
+                <b>2. ما مقترحاتك لتحسين الفعاليات القادمة؟</b><div class="small muted en">Open question — suggestions</div>
+              </div>
+              <p class="small muted">يصل لكل مشارك رابط شخصي آمن، ويُحفظ رده في ورقة <span class="en">Feedback</span>، ويظهر في لوحة المؤشرات. من سبق أن قيّم لا تصله الرسالة مرة أخرى.</p>
+            </div>
+            <div>
+              <h3 style="margin-top:0">إرسال طلب التقييم <span class="en muted small">Send evaluation request</span></h3>
+              <div id="fbInfo" class="alert info"></div>
+              <div id="fbMsg"></div>
+              <div class="actions">
+                <button class="btn" id="btnSendFb"><i data-lucide="send"></i> إرسال طلب التقييم للحضور</button>
+                <a class="btn secondary" href="dashboard.html"><i data-lucide="layout-dashboard"></i> عرض النتائج</a>
+              </div>
+              <p class="small muted" style="margin-top:10px"><i data-lucide="zap" style="width:14px;height:14px;vertical-align:-2px"></i> للإرسال التلقائي بعد انتهاء كل فعالية: شغّل الدالة <span class="en">installFeedbackTrigger</span> مرة واحدة من محرر Apps Script.</p>
+            </div>
+          </div>
+        </div>
+
         <div data-pane="email" class="hidden">
           <div class="alert info" id="mailInfo"></div>
           <div class="grid">
@@ -271,7 +300,7 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v1.9</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v2.2</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC — IT Operations Center" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -319,6 +348,43 @@
     base.searchParams.set('e', id);
     return base.href;
   }
+  function feedbackUrl() {
+    const u = new URL(checkinUrl('x'));
+    return u.href.replace(/checkin\.html.*$/i, 'feedback.html');
+  }
+
+  /* ---------- evaluation ---------- */
+  async function loadFb() {
+    if (!current) return;
+    $('fbKpis').innerHTML = '<div class="kpi"><span class="spinner dark"></span></div>';
+    try {
+      const r = await EA.call('feedbackStatus', { id: current.id });
+      const rate = r.attendees ? Math.round(r.responses / r.attendees * 100) : 0;
+      $('fbKpis').innerHTML = kpi(r.responses, 'عدد الردود · Responses') + kpi(r.attendees ? rate + '%' : '—', 'نسبة الاستجابة · Response rate') +
+        kpi(r.responses ? r.average.toFixed(2) + ' / 5' : '—', 'متوسط الرضا · Avg satisfaction');
+      const pending = Math.max(0, r.attendees - r.responses);
+      $('fbInfo').innerHTML = (r.sentAt ? 'آخر إرسال: <span class="en">' + esc(String(r.sentAt).replace('T', ' ').slice(0, 16)) + '</span> · ' : 'لم يُرسل طلب التقييم بعد · ') +
+        'سيُرسل إلى <b>' + pending + '</b> مشارك لم يقيّموا بعد.' + (EA.isDemo() ? ' <b>(تجريبي — لن تُرسل رسائل)</b>' : '');
+      $('btnSendFb').disabled = !pending;
+    } catch (e) {
+      $('fbKpis').innerHTML = '';
+      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v2.2 وانشر نسخة جديدة.' : '');
+    }
+  }
+  $('btnSendFb').onclick = async (ev) => {
+    const url = feedbackUrl();
+    if (!/^https:\/\//i.test(url) && !EA.isDemo()) { msg('fbMsg', 'err', 'رابط صفحة التقييم ليس منشورًا (https). افتح لوحة الإدارة من GitHub Pages أو اضبط رابط المنصة المنشور في الإعدادات.'); return; }
+    if (!confirm('إرسال طلب التقييم للمشاركين الذين لم يقيّموا بعد؟\nSend the evaluation request?')) return;
+    const b = ev.currentTarget; busy(b, true); msg('fbMsg');
+    try {
+      const r = await EA.call('sendFeedback', { id: current.id, pageUrl: url });
+      msg('fbMsg', r.failed || r.skipped ? 'warn' : 'ok', (r.demo ? '[تجريبي] ' : '') + 'تم إرسال ' + r.sent + ' من ' + r.recipients +
+        (r.failed ? ' · فشل: ' + r.failed : '') + (r.skipped ? ' · مؤجل لتجاوز الحصة: ' + r.skipped : ''));
+      loadFb();
+    } catch (e) { msg('fbMsg', 'err', e.message); }
+    busy(b, false);
+  };
+
   function show(view) {
     ['viewOverview', 'viewForm', 'viewEvent'].forEach(v => $(v).classList.toggle('hidden', v !== view));
   }
@@ -399,15 +465,14 @@
     const avg = events.length ? Math.round(total / events.length) : 0;
     $('ovKpis').innerHTML =
       kpi(events.length, 'إجمالي الفعاليات · Events') + kpi(open, 'مفتوحة للتسجيل · Open') +
-      kpi(total, 'إجمالي الحضور · Attendees') + kpi(avg, 'متوسط الحضور · Avg / event') +
-      kpi(quota == null ? '—' : quota, 'رصيد البريد اليومي · Mail quota');
+      kpi(total, 'إجمالي الحضور · Attendees') + kpi(avg, 'متوسط الحضور · Avg / event');
     $('ovBody').innerHTML = events.length ? events.map(e =>
       '<tr style="cursor:pointer" data-id="' + esc(e.id) + '"><td><b>' + esc(e.name) + '</b><div class="small muted en">' + esc(e.id) + '</div></td>' +
       '<td>' + esc(e.location) + '</td><td>' + esc(fmt(e.start)) + '</td><td>' + statusChip(e.status) + '</td><td><b>' + e.attendees + '</b></td></tr>').join('')
       : '<tr><td colspan="5" class="empty">ابدأ بإنشاء فعالية جديدة · Create your first event</td></tr>';
   }
   $('ovBody').onclick = (ev) => { const r = ev.target.closest('tr[data-id]'); if (r) selectEvent(r.dataset.id); };
-  function kpi(v, l) { return '<div class="kpi"><div class="v">' + esc(v) + '</div><div class="l">' + esc(l) + '</div></div>'; }
+  function kpi(v, l) { return '<div class="kpi"><div class="v"><span dir="ltr">' + esc(v) + '</span></div><div class="l">' + esc(l) + '</div></div>'; }
   $('btnOverview').onclick = () => { current = null; renderList(); show('viewOverview'); };
 
   /* ---------- create / edit ---------- */
@@ -481,6 +546,7 @@
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== name));
     if (name === 'email') renderMail();
+    if (name === 'fb') loadFb();
   }
 
   /* ---------- QR ---------- */
@@ -520,7 +586,7 @@
       '</style></head><body><div class="band"><img src="' + logo('logo-ictd.png') + '" onerror="this.style.visibility=\'hidden\'"><img src="' + logo('logo-sru.png') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
       '<h1>' + esc(e.name) + '</h1><div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v1.9</div>' +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v2.2</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -565,7 +631,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v1.9</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v2.2</p>';
   }
 
   $('btnCsv').onclick = () => {

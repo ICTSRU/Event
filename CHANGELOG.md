@@ -1,5 +1,27 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.2 — 2026-10-11
+- **Event evaluation (تقييم الفعالية):**
+  - Evaluation e-mail with one overall-satisfaction question on a 5-point Likert scale (clickable 1–5 buttons) and an open question for suggestions.
+  - New `feedback.html` page: personal signed link per attendee (HMAC token), rating pre-selected from the e-mail, optional suggestions, edit previous answer; one response per person per event.
+  - Responses saved to the new `Feedback` sheet (created automatically).
+  - Admin console: new **تقييم الفعالية** tab — responses, response rate, average satisfaction, send request to attendees who have not answered yet.
+  - Automation: `installFeedbackTrigger()` sends the evaluation automatically 1 hour after each event ends (hourly check, once per event).
+  - Dashboard: satisfaction KPIs, rating distribution, average satisfaction per event, suggestions list (search, filter by rating, export), responses and average columns in the events summary.
+- Backend: new `Feedback.gs`; actions `fbInfo`, `feedback` (public, signed) and `feedbackStatus`, `sendFeedback` (admin); `dashboard` now returns feedback. Manifest adds `script.scriptapp` scope (for the automatic trigger).
+
+## v2.1 — 2026-10-11
+- New **dashboard.html** — لوحة مؤشرات الفعاليات والحضور:
+  - 6 KPIs: events (open), check-ins, unique people, average per event, repeat-attendance rate, thank-you e-mail rate.
+  - Charts: attendees per event (top 12), monthly trend, check-ins by hour, by weekday, internal (sr.edu.sa) vs external, top e-mail domains — with hover tooltips.
+  - Tables: events summary with share of total; most engaged (repeat) attendees.
+  - Filters: period (30/90 days, month, year, custom), status, search; optional 1-minute auto-refresh; Excel (CSV) export; print/PDF.
+- Backend: new admin action `dashboard` (all events + check-ins in one call) — requires a new deployment version.
+- Admin console: **لوحة المؤشرات** button in the header.
+
+## v2.0 — 2026-10-11
+- Overview: removed the **رصيد البريد اليومي · Mail quota** tile (four KPI tiles remain: events, open, attendees, average per event).
+
 ## v1.9 — 2026-10-11
 - Admin console header: **قاعدة البيانات** and **الإعدادات** buttons hidden.
 - Settings still reachable by opening `index.html#settings`, and open automatically if the admin key or connection fails.

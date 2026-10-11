@@ -1,4 +1,4 @@
-# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v1.9
+# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v2.2
 
 QR-based attendance for any event: the organizer creates an event, prints its QR code, visitors scan and check in with name + e-mail, receive an automatic thank-you e-mail, and every check-in is stored in Google Sheets. The admin console produces attendance reports and sends e-mails to all attendees of an event.
 
@@ -7,12 +7,15 @@ QR-based attendance for any event: the organizer creates an event, prints its QR
 | File | Purpose |
 |---|---|
 | `index.html` | Admin console — create/edit events, QR code + printable poster, attendance report (KPIs, hourly chart, CSV/Excel, print/PDF), bulk e-mail, all-events overview |
+| `dashboard.html` | Events & attendance dashboard — KPIs, attendees per event, monthly trend, check-ins by hour/weekday, internal vs external, top domains, events summary, repeat attendees; filters, auto-refresh, Excel export, print/PDF |
+| `feedback.html` | Event evaluation page opened from the evaluation e-mail — 5-point Likert satisfaction + open suggestions; personal signed link |
 | `checkin.html` | Public check-in page opened by the QR code (`checkin.html?e=EVENT_ID`) — bilingual, mobile-first |
 | `assets/config.js` | Set `API_URL` (Apps Script Web App URL) |
 | `assets/api.js` | API client + built-in DEMO backend (used when `API_URL` is empty) |
 | `assets/sru-theme.css` | SRU identity tokens (purple #501e8c, blue #0a6eaa, Cairo, RTL) |
 | `assets/logo-*.png` | **Add these:** `logo-sru.png`, `logo-ictd.png`, `logo-itoc.png` (text fallbacks show until added) |
 | `apps-script/Code.gs` | Backend — Sheets storage, thank-you e-mail, reports, bulk e-mail |
+| `apps-script/Feedback.gs` | Event evaluation: signed links, responses (sheet `Feedback`), manual/automatic sending — add as a third script file |
 | `apps-script/EmailAssets.gs` | Logos and check icon embedded in e-mails (inline images) — add as a second script file |
 | `apps-script/appsscript.json` | Manifest (Asia/Riyadh, minimal scopes, Web App settings) |
 
@@ -22,6 +25,7 @@ QR-based attendance for any event: the organizer creates an event, prints its QR
 |---|---|
 | `Events` | EventID, EventName, Location, StartDateTime, EndDateTime, Organizer, Description, Status (Open/Closed), CreatedAt, UpdatedAt |
 | `Attendance` | Timestamp, EventID, EventName, FullName, Email, ThankYouSent, UserAgent |
+| `Feedback` | Timestamp, EventID, EventName, FullName, Email, Rating (1–5), Comment, UpdatedAt |
 | `MailLog` | Timestamp, EventID, Subject, Recipients, Sent, Failed, Notes |
 
 ## Setup (≈10 minutes)

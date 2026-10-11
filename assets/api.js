@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v1.9)
+/* SRU Event Attendance & Management Platform — API client (v2.2)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -20,7 +20,7 @@
   function apiUrl() { return cleanUrl(store('ea_api_url')) || cleanUrl(cfg.API_URL); }
   function isDemo() { return !apiUrl(); }
 
-  const PUBLIC = ['getEvent', 'checkin', 'checkStatus'];
+  const PUBLIC = ['getEvent', 'checkin', 'checkStatus', 'fbInfo', 'feedback'];
 
   async function call(action, payload) {
     const body = Object.assign({ action: action, key: store('ea_admin_key') || cfg.ADMIN_KEY || '' }, payload || {});
@@ -102,6 +102,34 @@
       case 'checkStatus': {
         const em = String(b.email || '').trim().toLowerCase();
         return Promise.resolve({ ok: true, registered: d.att.some(a => a.eventId === b.id && a.email === em), emailSent: false });
+      }
+      case 'dashboard':
+        return Promise.resolve({ ok: true, events: d.events, attendance: d.att.map(a => ({ e: a.eventId, t: a.time, n: a.name, m: a.email, s: a.thankYou })), feedback: (d.fb || []), generatedAt: nowIso() });
+      case 'fbInfo': {
+        const e = find(b.id); if (!e) return fail('Event not found');
+        const em = String(b.email || '').toLowerCase();
+        const a = d.att.find(x => x.eventId === e.id && x.email === em); if (!a) return fail('رابط التقييم غير صالح | Invalid evaluation link');
+        const prev = (d.fb || []).find(x => x.e === e.id && x.m === em);
+        return Promise.resolve({ ok: true, event: e, name: a.name, previous: prev ? { rating: prev.r, comment: prev.c } : null });
+      }
+      case 'feedback': {
+        const em = String(b.email || '').toLowerCase(); const r = +b.r;
+        if (!(r >= 1 && r <= 5)) return fail('يرجى اختيار التقييم | Please select a rating');
+        d.fb = d.fb || []; const prev = d.fb.find(x => x.e === b.id && x.m === em);
+        const a = d.att.find(x => x.eventId === b.id && x.email === em) || {};
+        if (prev) { prev.r = r; prev.c = b.c || ''; } else d.fb.push({ e: b.id, t: nowIso(), n: a.name || '', m: em, r: r, c: b.c || '' });
+        save(d); return Promise.resolve({ ok: true, updated: !!prev });
+      }
+      case 'feedbackStatus': {
+        const fb = (d.fb || []).filter(x => x.e === b.id);
+        const n = new Set(d.att.filter(a => a.eventId === b.id).map(a => a.email)).size;
+        return Promise.resolve({ ok: true, attendees: n, responses: fb.length, average: fb.length ? Math.round(fb.reduce((s, x) => s + x.r, 0) / fb.length * 100) / 100 : 0, sentAt: (d.fbSent || {})[b.id] || '' });
+      }
+      case 'sendFeedback': {
+        d.fbSent = d.fbSent || {}; d.fbSent[b.id] = nowIso(); save(d);
+        const answered = new Set((d.fb || []).filter(x => x.e === b.id).map(x => x.m));
+        const n = new Set(d.att.filter(a => a.eventId === b.id && !answered.has(a.email)).map(a => a.email)).size;
+        return Promise.resolve({ ok: true, recipients: n, sent: 0, failed: 0, skipped: 0, alreadyAnswered: answered.size, demo: true });
       }
       case 'getAttendance': {
         const e = find(b.id); if (!e) return fail('Event not found');

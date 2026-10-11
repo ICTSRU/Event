@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 1.9
+ * Version: 2.2
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '1.9';
+const APP_VERSION = '2.2';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
@@ -37,6 +37,7 @@ function setup() {
   ensureSheet_(ss, SH_EVENTS, EV_HEAD);
   ensureSheet_(ss, SH_ATT, AT_HEAD);
   ensureSheet_(ss, SH_LOG, LOG_HEAD);
+  ensureSheet_(ss, SH_FB, FB_HEAD);
   // Keep date-time strings as plain text so Sheets does not reformat them
   ss.getSheetByName(SH_EVENTS).getRange('A:J').setNumberFormat('@');
   ss.getSheetByName(SH_ATT).getRange('A:G').setNumberFormat('@');
@@ -69,6 +70,8 @@ function doGet(e) {
     if (p.action === 'getEvent') return json_(getEventPublic_(p.id));
     if (p.action === 'checkin') return json_(checkin_(p));
     if (p.action === 'checkStatus') return json_(checkStatus_(p.id, p.email));
+    if (p.action === 'fbInfo') return json_(fbInfo_(p));
+    if (p.action === 'feedback') return json_(submitFeedback_(p));
     return json_({ ok: true, app: 'SRU Event Attendance & Management Platform', version: APP_VERSION, sheet: ss_().getName() });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
@@ -95,6 +98,9 @@ function doPost(e) {
       case 'updateEvent': return json_(updateEvent_(body.event));
       case 'setStatus': return json_(setStatus_(body.id, body.status));
       case 'getAttendance': return json_(getAttendance_(body.id));
+      case 'dashboard': return json_(dashboard_());
+      case 'feedbackStatus': return json_(feedbackStatus_(body.id));
+      case 'sendFeedback': return json_(sendFeedback_(body));
       case 'sendBulk': return json_(sendBulk_(body));
       case 'quota': return json_({ ok: true, remaining: MailApp.getRemainingDailyQuota() });
       case 'verify': return json_({ ok: true, sheet: ss_().getName(), sheetUrl: ss_().getUrl() });
@@ -286,6 +292,18 @@ function setStatus_(id, status) {
   return { ok: true };
 }
 
+// All events + all check-ins in one call, for dashboard.html
+function dashboard_() {
+  const events = rows_(SH_EVENTS).map(function (r) {
+    const e = publicEvent_(r); e.createdAt = r.CreatedAt; return e;
+  });
+  const att = rows_(SH_ATT).map(function (r) {
+    return { e: r.EventID, t: r.Timestamp, n: r.FullName, m: String(r.Email).toLowerCase(), s: r.ThankYouSent };
+  });
+  const fb = fbRows_().map(function (r) { return { e: r.e, t: r.t, n: r.n, m: r.m, r: r.r, c: r.c }; });
+  return { ok: true, events: events, attendance: att, feedback: fb, generatedAt: now_() };
+}
+
 function getAttendance_(id) {
   const ev = findEvent_(id);
   if (!ev) throw new Error('Event not found');
@@ -389,7 +407,7 @@ function emailShell_(ev, inner, opts) {
   const purple = '#501e8c', ink = '#241436', muted = '#6b5a80';
   const hero =
     '<tr><td style="background:' + purple + ';padding:22px 26px;font-family:' + FONT_ + ';color:#ffffff;text-align:right" dir="rtl">' +
-      '<div style="font-size:13px;color:#e4d9f3">منصة تسجيل حضور وإدارة الفعاليات · <span dir="ltr" style="white-space:nowrap">Attendance check-in</span></div>' +
+      '<div style="font-size:13px;color:#e4d9f3">منصة تسجيل حضور وإدارة الفعاليات · ' + (opts.kicker || '<span dir="ltr" style="white-space:nowrap">Attendance check-in</span>') + '</div>' +
       '<div style="font-size:24px;font-weight:700;line-height:1.5;margin:6px 0 10px">' + esc_(ev.EventName) + '</div>' +
       '<div style="font-size:15px;line-height:1.9">📍 ' + esc_(ev.Location) + '</div>' +
       '<div style="font-size:15px;line-height:1.9">🗓️ ' + esc_(fmtArDate_(ev.StartDateTime)) + '</div>' +

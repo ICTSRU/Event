@@ -1,5 +1,12 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.6 — 2026-10-11
+- Fix: bulk e-mails (مراسلة الحضور, e.g. the post-event thank-you template) lost their line breaks in Outlook and reordered Arabic/English text and dates.
+  - Each line of the message becomes its own paragraph with an explicit direction (Arabic → RTL, otherwise LTR); blank lines are kept as spacing.
+  - Latin names/values inside Arabic lines are direction-isolated; `{date}` now renders as the Arabic long date (e.g. «الخميس، 15 أكتوبر 2026 في 03:07 م»).
+  - Header label for these e-mails: «رسالة للمشاركين · Message to attendees» (was "Attendance check-in").
+- Admin preview uses the same Arabic date format.
+
 ## v2.5 — 2026-10-11
 - Fix: evaluation page could show "Network error" on submit when the server reply was lost.
   - Safe calls (`getEvent`, `checkStatus`, `fbInfo`, `feedback`) now retry automatically up to 3 times on a network failure.

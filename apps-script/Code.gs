@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 2.5
+ * Version: 2.6
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '2.5';
+const APP_VERSION = '2.6';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
@@ -341,7 +341,8 @@ function sendBulk_(b) {
         to: p.Email,
         subject: fill_(subject, ev, p.FullName),
         name: SENDER_NAME,
-        htmlBody: emailShell_(ev, '<div dir="auto" style="white-space:pre-line;text-align:start">' + esc_(body) + '</div>'),
+        htmlBody: emailShell_(ev, messageHtml_(message, ev, p.FullName),
+          { kicker: 'رسالة للمشاركين · <span dir="ltr" style="white-space:nowrap">Message to attendees</span>' }),
         inlineImages: images,
         body: body
       });
@@ -371,7 +372,32 @@ function fill_(text, ev, name) {
     .replace(/\{name\}/g, name || '')
     .replace(/\{event\}/g, ev.EventName || '')
     .replace(/\{location\}/g, ev.Location || '')
-    .replace(/\{date\}/g, fmtDate_(ev.StartDateTime));
+    .replace(/\{date\}/g, fmtArDate_(ev.StartDateTime));
+}
+
+/**
+ * Turns the plain-text message typed in the admin console into Outlook-safe HTML:
+ * one <p> per line (Outlook ignores white-space:pre-line), each with an explicit
+ * direction (Arabic → RTL, otherwise LTR) so names and numbers are not reordered.
+ * Placeholders are filled after escaping; Latin values inside Arabic lines are isolated.
+ */
+function messageHtml_(text, ev, name) {
+  const AR = /[\u0600-\u06FF]/;
+  return String(text).replace(/\r/g, '').split('\n').map(function (line) {
+    if (!line.trim()) return '<p style="margin:0;line-height:12px;font-size:12px">&nbsp;</p>';
+    const rtl = AR.test(line.replace(/\{[a-z]+\}/g, ''));
+    const iso = function (v) {
+      v = esc_(v || '');
+      return rtl && !AR.test(v) ? '<span dir="ltr">' + v + '</span>' : v;   // keep Latin names/values intact
+    };
+    const html = esc_(line)
+      .replace(/\{name\}/g, iso(name))
+      .replace(/\{event\}/g, iso(ev.EventName))
+      .replace(/\{location\}/g, iso(ev.Location))
+      .replace(/\{date\}/g, iso(fmtArDate_(ev.StartDateTime)));
+    return '<p dir="' + (rtl ? 'rtl' : 'ltr') + '" style="margin:0 0 6px;text-align:' + (rtl ? 'right' : 'left') +
+      ';font-family:' + FONT_ + ';font-size:15px;line-height:26px;color:#241436">' + html + '</p>';
+  }).join('');
 }
 
 function esc_(s) {

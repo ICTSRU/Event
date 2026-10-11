@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v2.5)
+/* SRU Event Attendance & Management Platform — API client (v2.6)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */

@@ -1,0 +1,378 @@
+/**
+ * SRU ICTD — Event Attendance & Management Platform
+ * Backend: Google Apps Script Web App + Google Sheets + MailApp
+ * Version: 1.4
+ *
+ * Sheets created by setup():
+ *   Events      — one row per event
+ *   Attendance  — one row per check-in
+ *   MailLog     — one row per bulk e-mail campaign
+ *
+ * Public actions (no key):   getEvent, checkin
+ * Admin actions (ADMIN_KEY): listEvents, createEvent, updateEvent, setStatus,
+ *                            getAttendance, sendBulk, quota
+ */
+
+const APP_VERSION = '1.4';
+const SH_EVENTS = 'Events';
+const SH_ATT = 'Attendance';
+const SH_LOG = 'MailLog';
+
+const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
+  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt'];
+const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
+const LOG_HEAD = ['Timestamp', 'EventID', 'Subject', 'Recipients', 'Sent', 'Failed', 'Notes'];
+
+// Google Sheet that stores all data (direct link — works for bound or standalone scripts)
+const SPREADSHEET_ID = '1WKlJn9N5H4x3iRI_J468wTTTZ54srgo0tA5DkYDeMA4';
+
+const SENDER_NAME = 'منصة حضور وإدارة الفعاليات | SRU Events Platform';
+const TZ = 'Asia/Riyadh';
+
+/* ------------------------------------------------------------------ */
+/* One-time setup — run from the editor                                */
+/* ------------------------------------------------------------------ */
+function setup() {
+  const ss = ss_();
+  ensureSheet_(ss, SH_EVENTS, EV_HEAD);
+  ensureSheet_(ss, SH_ATT, AT_HEAD);
+  ensureSheet_(ss, SH_LOG, LOG_HEAD);
+  // Keep date-time strings as plain text so Sheets does not reformat them
+  ss.getSheetByName(SH_EVENTS).getRange('A:J').setNumberFormat('@');
+  ss.getSheetByName(SH_ATT).getRange('A:G').setNumberFormat('@');
+
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('ADMIN_KEY')) {
+    props.setProperty('ADMIN_KEY', Utilities.getUuid().replace(/-/g, '').slice(0, 16));
+  }
+  Logger.log('Setup complete. ADMIN_KEY = ' + props.getProperty('ADMIN_KEY'));
+  Logger.log('Daily e-mail quota remaining: ' + MailApp.getRemainingDailyQuota());
+}
+
+function ensureSheet_(ss, name, head) {
+  let sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  if (sh.getLastRow() === 0) {
+    sh.getRange(1, 1, 1, head.length).setValues([head])
+      .setFontWeight('bold').setBackground('#501e8c').setFontColor('#ffffff');
+    sh.setFrozenRows(1);
+  }
+  return sh;
+}
+
+/* ------------------------------------------------------------------ */
+/* HTTP entry points                                                   */
+/* ------------------------------------------------------------------ */
+function doGet(e) {
+  const p = (e && e.parameter) || {};
+  try {
+    if (p.action === 'getEvent') return json_(getEventPublic_(p.id));
+    return json_({ ok: true, app: 'SRU Event Attendance & Management Platform', version: APP_VERSION, sheet: ss_().getName() });
+  } catch (err) {
+    return json_({ ok: false, error: String(err.message || err) });
+  }
+}
+
+function doPost(e) {
+  let body = {};
+  try {
+    body = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+  } catch (err) {
+    return json_({ ok: false, error: 'Invalid JSON body' });
+  }
+  try {
+    switch (body.action) {
+      case 'getEvent': return json_(getEventPublic_(body.id));
+      case 'checkin': return json_(checkin_(body));
+    }
+    requireAdmin_(body.key);
+    switch (body.action) {
+      case 'listEvents': return json_(listEvents_());
+      case 'createEvent': return json_(createEvent_(body.event));
+      case 'updateEvent': return json_(updateEvent_(body.event));
+      case 'setStatus': return json_(setStatus_(body.id, body.status));
+      case 'getAttendance': return json_(getAttendance_(body.id));
+      case 'sendBulk': return json_(sendBulk_(body));
+      case 'quota': return json_({ ok: true, remaining: MailApp.getRemainingDailyQuota() });
+      case 'verify': return json_({ ok: true, sheet: ss_().getName(), sheetUrl: ss_().getUrl() });
+      default: return json_({ ok: false, error: 'Unknown action' });
+    }
+  } catch (err) {
+    return json_({ ok: false, error: String(err.message || err) });
+  }
+}
+
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function requireAdmin_(key) {
+  const real = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
+  if (!real || String(key || '') !== real) throw new Error('Unauthorized: invalid admin key');
+}
+
+/* ------------------------------------------------------------------ */
+/* Data helpers                                                        */
+/* ------------------------------------------------------------------ */
+function ss_() {
+  return SPREADSHEET_ID ? SpreadsheetApp.openById(SPREADSHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+}
+
+const HEADS_ = {};
+HEADS_[SH_EVENTS] = EV_HEAD; HEADS_[SH_ATT] = AT_HEAD; HEADS_[SH_LOG] = LOG_HEAD;
+
+function sheet_(name) {
+  const ss = ss_();
+  // Self-healing: recreate a missing tab with its headers instead of failing
+  return ss.getSheetByName(name) || ensureSheet_(ss, name, HEADS_[name]);
+}
+
+function rows_(name) {
+  const sh = sheet_(name);
+  const values = sh.getDataRange().getDisplayValues();
+  const head = values.shift() || [];
+  return values.map(function (r, i) {
+    const o = { _row: i + 2 };
+    head.forEach(function (h, j) { o[h] = r[j]; });
+    return o;
+  });
+}
+
+function now_() {
+  return Utilities.formatDate(new Date(), TZ, "yyyy-MM-dd'T'HH:mm:ss");
+}
+
+function clean_(s, max) {
+  s = String(s == null ? '' : s).trim();
+  // Neutralise spreadsheet formula injection
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s.slice(0, max || 300);
+}
+
+function findEvent_(id) {
+  id = String(id || '').trim();
+  if (!id) return null;
+  return rows_(SH_EVENTS).filter(function (r) { return r.EventID === id; })[0] || null;
+}
+
+function newId_() {
+  const stamp = Utilities.formatDate(new Date(), TZ, 'yyMMdd');
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let rnd = '';
+  for (let i = 0; i < 4; i++) rnd += chars.charAt(Math.floor(Math.random() * chars.length));
+  return 'EV-' + stamp + '-' + rnd;
+}
+
+function publicEvent_(r) {
+  return {
+    id: r.EventID, name: r.EventName, location: r.Location,
+    start: r.StartDateTime, end: r.EndDateTime, organizer: r.Organizer,
+    description: r.Description, status: r.Status
+  };
+}
+
+/* ------------------------------------------------------------------ */
+/* Public actions                                                      */
+/* ------------------------------------------------------------------ */
+function getEventPublic_(id) {
+  const r = findEvent_(id);
+  if (!r) return { ok: false, error: 'Event not found' };
+  return { ok: true, event: publicEvent_(r) };
+}
+
+function checkin_(b) {
+  const name = clean_(b.name, 120);
+  const email = clean_(b.email, 160).toLowerCase();
+  if (name.length < 3) return { ok: false, error: 'Please enter your full name' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok: false, error: 'Invalid e-mail address' };
+
+  const ev = findEvent_(b.id);
+  if (!ev) return { ok: false, error: 'Event not found' };
+  if (ev.Status !== 'Open') return { ok: false, error: 'Registration for this event is closed', closed: true };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    const dup = rows_(SH_ATT).some(function (r) {
+      return r.EventID === ev.EventID && String(r.Email).toLowerCase() === email;
+    });
+    if (dup) return { ok: true, duplicate: true, event: publicEvent_(ev) };
+
+    const sh = sheet_(SH_ATT);
+    sh.appendRow([now_(), ev.EventID, ev.EventName, name, email, 'Pending', clean_(b.ua, 200)]);
+    const row = sh.getLastRow();
+    let sent = 'No';
+    try {
+      sendThankYou_(ev, name, email);
+      sent = 'Yes';
+    } catch (mailErr) {
+      sent = 'Failed: ' + String(mailErr.message || mailErr).slice(0, 80);
+    }
+    sh.getRange(row, 6).setValue(sent);
+    return { ok: true, duplicate: false, emailSent: sent === 'Yes', event: publicEvent_(ev) };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Admin actions                                                       */
+/* ------------------------------------------------------------------ */
+function listEvents_() {
+  const counts = {};
+  rows_(SH_ATT).forEach(function (r) { counts[r.EventID] = (counts[r.EventID] || 0) + 1; });
+  const events = rows_(SH_EVENTS).map(function (r) {
+    const e = publicEvent_(r);
+    e.createdAt = r.CreatedAt;
+    e.attendees = counts[r.EventID] || 0;
+    return e;
+  }).sort(function (a, b) { return String(b.start).localeCompare(String(a.start)); });
+  return { ok: true, events: events, quota: MailApp.getRemainingDailyQuota() };
+}
+
+function validateEvent_(e) {
+  if (!e) throw new Error('Missing event data');
+  const out = {
+    name: clean_(e.name, 200), location: clean_(e.location, 200),
+    start: clean_(e.start, 25), end: clean_(e.end, 25),
+    organizer: clean_(e.organizer, 120), description: clean_(e.description, 1000)
+  };
+  if (!out.name) throw new Error('Event name is required');
+  if (!out.location) throw new Error('Location is required');
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(out.start)) throw new Error('Valid start date/time is required');
+  if (out.end && out.end < out.start) throw new Error('End time must be after start time');
+  return out;
+}
+
+function createEvent_(e) {
+  const v = validateEvent_(e);
+  const id = newId_();
+  const ts = now_();
+  sheet_(SH_EVENTS).appendRow([id, v.name, v.location, v.start, v.end, v.organizer,
+    v.description, 'Open', ts, ts]);
+  return { ok: true, id: id };
+}
+
+function updateEvent_(e) {
+  const r = findEvent_(e && e.id);
+  if (!r) throw new Error('Event not found');
+  const v = validateEvent_(e);
+  sheet_(SH_EVENTS).getRange(r._row, 2, 1, 6)
+    .setValues([[v.name, v.location, v.start, v.end, v.organizer, v.description]]);
+  sheet_(SH_EVENTS).getRange(r._row, 10).setValue(now_());
+  return { ok: true, id: r.EventID };
+}
+
+function setStatus_(id, status) {
+  if (['Open', 'Closed'].indexOf(status) < 0) throw new Error('Status must be Open or Closed');
+  const r = findEvent_(id);
+  if (!r) throw new Error('Event not found');
+  sheet_(SH_EVENTS).getRange(r._row, 8).setValue(status);
+  sheet_(SH_EVENTS).getRange(r._row, 10).setValue(now_());
+  return { ok: true };
+}
+
+function getAttendance_(id) {
+  const ev = findEvent_(id);
+  if (!ev) throw new Error('Event not found');
+  const list = rows_(SH_ATT).filter(function (r) { return r.EventID === ev.EventID; })
+    .map(function (r) {
+      return { time: r.Timestamp, name: r.FullName, email: r.Email, thankYou: r.ThankYouSent };
+    });
+  return { ok: true, event: publicEvent_(ev), attendees: list };
+}
+
+function sendBulk_(b) {
+  const ev = findEvent_(b.id);
+  if (!ev) throw new Error('Event not found');
+  const subject = clean_(b.subject, 200);
+  const message = String(b.message || '').slice(0, 10000);
+  if (!subject || !message.trim()) throw new Error('Subject and message are required');
+
+  const people = rows_(SH_ATT).filter(function (r) { return r.EventID === ev.EventID; });
+  const seen = {};
+  const unique = people.filter(function (p) {
+    const k = String(p.Email).toLowerCase();
+    if (seen[k]) return false;
+    seen[k] = true; return true;
+  });
+
+  let quota = MailApp.getRemainingDailyQuota();
+  let sent = 0, failed = 0, skipped = 0;
+  unique.forEach(function (p) {
+    if (quota <= 0) { skipped++; return; }
+    try {
+      const body = fill_(message, ev, p.FullName);
+      MailApp.sendEmail({
+        to: p.Email,
+        subject: fill_(subject, ev, p.FullName),
+        name: SENDER_NAME,
+        htmlBody: emailShell_(ev, '<div style="white-space:pre-line">' + esc_(body) + '</div>'),
+        body: body
+      });
+      sent++; quota--;
+    } catch (err) {
+      failed++;
+    }
+  });
+  sheet_(SH_LOG).appendRow([now_(), ev.EventID, subject, unique.length, sent, failed,
+    skipped ? skipped + ' skipped (daily quota)' : '']);
+  return { ok: true, recipients: unique.length, sent: sent, failed: failed, skipped: skipped,
+    remaining: MailApp.getRemainingDailyQuota() };
+}
+
+/* ------------------------------------------------------------------ */
+/* E-mail                                                              */
+/* ------------------------------------------------------------------ */
+function fmtDate_(s) {
+  if (!s) return '';
+  const d = new Date(String(s).slice(0, 16) + ':00');
+  if (isNaN(d)) return s;
+  return Utilities.formatDate(d, TZ, 'yyyy-MM-dd  HH:mm');
+}
+
+function fill_(text, ev, name) {
+  return String(text)
+    .replace(/\{name\}/g, name || '')
+    .replace(/\{event\}/g, ev.EventName || '')
+    .replace(/\{location\}/g, ev.Location || '')
+    .replace(/\{date\}/g, fmtDate_(ev.StartDateTime));
+}
+
+function esc_(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function emailShell_(ev, inner) {
+  return '' +
+    '<div style="background:#f7f5fb;padding:24px 12px;font-family:Cairo,Tahoma,Arial,sans-serif">' +
+    '<div style="max-width:600px;margin:0 auto;background:#fff;border:1px solid rgba(80,30,140,.12);border-radius:4px;overflow:hidden">' +
+    '<div style="background:#501e8c;color:#fff;padding:18px 22px">' +
+    '<div style="font-size:12px;opacity:.85">جامعة سليمان الراجحي | Sulaiman Al Rajhi University</div>' +
+    '<div style="font-size:19px;font-weight:700;margin-top:4px">' + esc_(ev.EventName) + '</div></div>' +
+    '<div style="height:4px;background:#0a6eaa"></div>' +
+    '<div style="padding:22px;color:#241436;font-size:15px;line-height:1.8">' + inner + '</div>' +
+    '<div style="padding:14px 22px;background:#f0ebf8;color:#6b5a80;font-size:12px">' +
+    '📍 ' + esc_(ev.Location) + ' &nbsp;|&nbsp; 🗓 ' + esc_(fmtDate_(ev.StartDateTime)) +
+    '<br>الإدارة التنفيذية للاتصالات وتقنية المعلومات — Executive Directorate of Communications &amp; IT' +
+    '</div></div></div>';
+}
+
+function sendThankYou_(ev, name, email) {
+  const ar = '<div dir="rtl" style="text-align:right">' +
+    '<p>مرحبًا <b>' + esc_(name) + '</b>،</p>' +
+    '<p>شكرًا لتسجيل حضورك في <b>' + esc_(ev.EventName) + '</b>. يسعدنا انضمامك إلينا، ونتمنى لك تجربة مفيدة وممتعة.</p></div>';
+  const en = '<div dir="ltr" style="text-align:left;border-top:1px solid #eee;margin-top:14px;padding-top:14px">' +
+    '<p>Hello <b>' + esc_(name) + '</b>,</p>' +
+    '<p>Thank you for joining <b>' + esc_(ev.EventName) + '</b>. Your attendance has been recorded — we hope you enjoy the event.</p></div>';
+  MailApp.sendEmail({
+    to: email,
+    subject: 'شكرًا لحضورك | Thank you for joining — ' + ev.EventName,
+    name: SENDER_NAME,
+    htmlBody: emailShell_(ev, ar + en),
+    body: 'Thank you for joining ' + ev.EventName + ', ' + name + '. Your attendance has been recorded.'
+  });
+}

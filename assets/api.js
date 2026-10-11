@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v2.4)
+/* SRU Event Attendance & Management Platform — API client (v2.5)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -22,7 +22,25 @@
 
   const PUBLIC = ['getEvent', 'checkin', 'checkStatus', 'fbInfo', 'feedback'];
 
+  // Safe to repeat: reads, and writes that are idempotent on the server (feedback is an upsert)
+  const RETRY = ['getEvent', 'checkStatus', 'fbInfo', 'feedback'];
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
   async function call(action, payload) {
+    const tries = RETRY.indexOf(action) >= 0 ? 3 : 1;
+    let lastErr;
+    for (let i = 0; i < tries; i++) {
+      try { return await call1(action, payload); }
+      catch (e) {
+        lastErr = e;
+        if (e.data || i === tries - 1) throw e;   // server answered with an error → do not retry
+        await wait(1200 * (i + 1));
+      }
+    }
+    throw lastErr;
+  }
+
+  async function call1(action, payload) {
     const body = Object.assign({ action: action, key: store('ea_admin_key') || cfg.ADMIN_KEY || '' }, payload || {});
     if (isDemo()) return demo(action, body);
     let res;

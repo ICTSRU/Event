@@ -1,9 +1,9 @@
-/* SRU Event Attendance & Management Platform — configuration (v2.4)
+/* SRU Event Attendance & Management Platform — configuration (v2.5)
  * 1. Paste your Apps Script Web App URL below (ends with /exec).
  * 2. Leave it empty to run in DEMO mode (data kept in this browser only).
  */
 window.EA_CONFIG = {
-  VERSION: '2.4',
+  VERSION: '2.5',
   API_URL: 'https://script.google.com/macros/s/AKfycbwA4OA3paT4lDZ3T953kYuUyOCwwtU7ZZJDSMTcKztg19rfFtJNKmONZfxgFMvVpYCr/exec',
   ADMIN_KEY: '6327aaf109c44939',  // default admin key (must match Script Properties → ADMIN_KEY). Visible to anyone who can open this file.
   TEST_EMAIL: 'm.elmahdy@sr.edu.sa', // default address for "send a test copy to me"

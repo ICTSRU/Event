@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تقييم الفعالية | Event Evaluation — v2.4</title>
+<title>تقييم الفعالية | Event Evaluation — v2.5</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -88,7 +88,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.4</span></span>
+    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.5</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -159,10 +159,18 @@
       showDone();
     } catch (err) {
       if (!err.data) {
-        // reply lost on the network (iPhone) — confirm by reading it back
-        try { const r = await EA.call('fbInfo', P); if (r.previous && r.previous.rating === rating) { showDone(); return; } } catch (x) {}
+        // reply lost on the network — check whether the answer was saved before showing an error
+        for (let i = 0; i < 3; i++) {
+          await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+          try {
+            const r = await EA.call('fbInfo', P);
+            if (r.test || (r.previous && +r.previous.rating === rating)) { showDone(); return; }
+          } catch (x) { /* keep trying */ }
+        }
+        $('msg').innerHTML = '<div class="alert err">تعذّر إرسال التقييم بسبب انقطاع في الاتصال. يرجى المحاولة مرة أخرى بعد لحظات.<br><span class="en">Could not reach the server — please try again in a moment.</span></div>';
+      } else {
+        $('msg').innerHTML = '<div class="alert err">تعذّر الإرسال: ' + esc(err.message) + '</div>';
       }
-      $('msg').innerHTML = '<div class="alert err">تعذّر الإرسال: ' + esc(err.message) + '</div>';
     }
     b.disabled = false; b.innerHTML = '<i data-lucide="send"></i> إرسال التقييم · <span class="en">Submit</span>'; icons();
   });

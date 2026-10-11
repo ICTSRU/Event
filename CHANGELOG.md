@@ -1,5 +1,11 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.5 — 2026-10-11
+- Fix: evaluation page could show "Network error" on submit when the server reply was lost.
+  - Safe calls (`getEvent`, `checkStatus`, `fbInfo`, `feedback`) now retry automatically up to 3 times on a network failure.
+  - Before showing an error, the page re-reads the saved answer (3 checks) and shows success if it was stored.
+  - Clearer bilingual message when the server is truly unreachable.
+
 ## v2.4 — 2026-10-11
 - Evaluation tab: **إرسال نسخة تجريبية لي** — sends one copy of the evaluation e-mail to a chosen address (default `TEST_EMAIL` in `config.js`, remembered per browser).
 - Test copies carry preview links (`&test=1`, separately signed): the evaluation page opens in preview mode, works without an attendance record, and never saves the answer. Subject is prefixed with "[نسخة تجريبية · TEST]"; logged in `MailLog`.

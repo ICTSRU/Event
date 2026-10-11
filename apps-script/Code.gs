@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 2.6
+ * Version: 2.7
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '2.6';
+const APP_VERSION = '2.7';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
@@ -71,7 +71,7 @@ function doGet(e) {
     if (p.action === 'checkin') return json_(checkin_(p));
     if (p.action === 'checkStatus') return json_(checkStatus_(p.id, p.email));
     if (p.action === 'fbInfo') return json_(fbInfo_(p));
-    if (p.action === 'feedback') return json_(submitFeedback_(p));
+    if (p.action === 'feedback' || p.action === 'rate') return json_(submitFeedback_(p));
     return json_({ ok: true, app: 'SRU Event Attendance & Management Platform', version: APP_VERSION, sheet: ss_().getName() });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
@@ -90,6 +90,9 @@ function doPost(e) {
       case 'getEvent': return json_(getEventPublic_(body.id));
       case 'checkin': return json_(checkin_(body));
       case 'checkStatus': return json_(checkStatus_(body.id, body.email));
+      case 'fbInfo': return json_(fbInfo_(body));
+      case 'rate':
+      case 'feedback': return json_(submitFeedback_(body));
     }
     requireAdmin_(body.key);
     switch (body.action) {

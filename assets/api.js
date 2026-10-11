@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v2.6)
+/* SRU Event Attendance & Management Platform — API client (v2.7)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -23,14 +23,16 @@
   const PUBLIC = ['getEvent', 'checkin', 'checkStatus', 'fbInfo', 'feedback'];
 
   // Safe to repeat: reads, and writes that are idempotent on the server (feedback is an upsert)
-  const RETRY = ['getEvent', 'checkStatus', 'fbInfo', 'feedback'];
+  const RETRY = ['getEvent', 'checkStatus', 'fbInfo', 'feedback', 'rate'];
+  // Public actions sent by POST (body, not URL) — avoids privacy/ad-block filters that block URLs like "?action=feedback"
+  const PUBLIC_POST = ['rate'];
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   async function call(action, payload) {
     const tries = RETRY.indexOf(action) >= 0 ? 3 : 1;
     let lastErr;
     for (let i = 0; i < tries; i++) {
-      try { return await call1(action, payload); }
+      try { return await call1(action, payload, action === 'rate' && i > 0); }
       catch (e) {
         lastErr = e;
         if (e.data || i === tries - 1) throw e;   // server answered with an error → do not retry
@@ -40,12 +42,14 @@
     throw lastErr;
   }
 
-  async function call1(action, payload) {
-    const body = Object.assign({ action: action, key: store('ea_admin_key') || cfg.ADMIN_KEY || '' }, payload || {});
-    if (isDemo()) return demo(action, body);
+  async function call1(action, payload, forceGet) {
+    const isPublic = PUBLIC.indexOf(action) >= 0 || PUBLIC_POST.indexOf(action) >= 0;
+    // never send the admin key from public (visitor) pages
+    const body = Object.assign({ action: action }, isPublic ? {} : { key: store('ea_admin_key') || cfg.ADMIN_KEY || '' }, payload || {});
+    if (isDemo()) return demo(action === 'rate' ? 'feedback' : action, body);
     let res;
     try {
-      if (PUBLIC.indexOf(action) >= 0) {
+      if (PUBLIC.indexOf(action) >= 0 || forceGet) {
         // Public (visitor) calls use a simple GET — most reliable on iPhone/Safari with Apps Script redirects
         const q = new URLSearchParams();
         Object.keys(body).forEach(k => { if (k !== 'key' && body[k] != null) q.set(k, body[k]); });
@@ -60,7 +64,7 @@
         });
       }
     } catch (e) {
-      throw new Error('تعذر الاتصال بالخادم — تأكد من رابط Web App وأن النشر متاح لـ Anyone | Network error');
+      throw Object.assign(new Error('تعذر الاتصال بالخادم — تأكد من رابط Web App وأن النشر متاح لـ Anyone | Network error'), { cause: action + ': ' + (e && e.message || e) });
     }
     let data;
     try { data = await res.json(); } catch (e) { throw new Error('Unexpected server response — check the Web App URL and access setting'); }

@@ -1,5 +1,11 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.7 — 2026-10-11
+- Fix: evaluations were never saved (Feedback sheet empty) — the submit request `?action=feedback` was blocked before reaching Apps Script (privacy/ad-block style URL filters), while page loading worked.
+  - Submission now uses the neutral action `rate`, sent by POST in the request body; on a network failure it retries by GET. The server accepts both (`feedback` kept as alias).
+  - Public pages no longer send the admin key with visitor requests.
+  - Error box on the evaluation page shows a short technical detail for diagnosis.
+
 ## v2.6 — 2026-10-11
 - Fix: bulk e-mails (مراسلة الحضور, e.g. the post-event thank-you template) lost their line breaks in Outlook and reordered Arabic/English text and dates.
   - Each line of the message becomes its own paragraph with an explicit direction (Arabic → RTL, otherwise LTR); blank lines are kept as spacing.

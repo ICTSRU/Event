@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تقييم الفعالية | Event Evaluation — v2.6</title>
+<title>تقييم الفعالية | Event Evaluation — v2.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -88,7 +88,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.6</span></span>
+    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v2.7</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -155,7 +155,7 @@
     const b = $('submit'); b.disabled = true; b.innerHTML = '<span class="spinner"></span>';
     const payload = Object.assign({}, P, { r: rating, c: $('comment').value.trim() });
     try {
-      await EA.call('feedback', payload);
+      await EA.call('rate', payload);
       showDone();
     } catch (err) {
       if (!err.data) {
@@ -167,7 +167,8 @@
             if (r.test || (r.previous && +r.previous.rating === rating)) { showDone(); return; }
           } catch (x) { /* keep trying */ }
         }
-        $('msg').innerHTML = '<div class="alert err">تعذّر إرسال التقييم بسبب انقطاع في الاتصال. يرجى المحاولة مرة أخرى بعد لحظات.<br><span class="en">Could not reach the server — please try again in a moment.</span></div>';
+        $('msg').innerHTML = '<div class="alert err">تعذّر إرسال التقييم بسبب انقطاع في الاتصال. يرجى المحاولة مرة أخرى بعد لحظات، أو من متصفح آخر / نافذة خاصة.<br><span class="en">Could not reach the server — please try again, or use another browser / private window.</span>' +
+          '<div class="small" style="margin-top:6px;opacity:.75" dir="ltr">' + esc(String(err.cause || err.message || '').slice(0, 120)) + '</div></div>';
       } else {
         $('msg').innerHTML = '<div class="alert err">تعذّر الإرسال: ' + esc(err.message) + '</div>';
       }

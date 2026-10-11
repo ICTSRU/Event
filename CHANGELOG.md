@@ -1,5 +1,9 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v2.8 — 2026-10-11
+- Dashboard: the free-text event search is replaced by an **event dropdown** (الفعالية · Event) listing events newest first with their date; choosing one shows that event's figures only.
+- The dropdown follows the Period and Status filters (lists only matching events, shows their count) and keeps the selection when data refreshes.
+
 ## v2.7 — 2026-10-11
 - Fix: evaluations were never saved (Feedback sheet empty) — the submit request `?action=feedback` was blocked before reaching Apps Script (privacy/ad-block style URL filters), while page loading worked.
   - Submission now uses the neutral action `rate`, sent by POST in the request body; on a network failure it retries by GET. The server accepts both (`feedback` kept as alias).

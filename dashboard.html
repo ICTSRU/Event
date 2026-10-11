@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة مؤشرات الفعاليات والحضور | Events Dashboard — v2.7</title>
+<title>لوحة مؤشرات الفعاليات والحضور | Events Dashboard — v2.8</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -83,7 +83,7 @@
     </div>
     <div class="actions" style="align-items:center">
       <label class="switch no-print"><input type="checkbox" id="auto"> تحديث تلقائي كل دقيقة</label>
-      <span class="ver en">v2.7</span>
+      <span class="ver en">v2.8</span>
       <button class="btn secondary sm" id="btnRefresh"><i data-lucide="refresh-cw"></i> تحديث</button>
       <button class="btn secondary sm" id="btnCsv"><i data-lucide="file-spreadsheet"></i> Excel</button>
       <button class="btn secondary sm" id="btnPrint"><i data-lucide="printer"></i> طباعة / PDF</button>
@@ -123,8 +123,8 @@
       <select id="fStatus"><option value="all">الكل</option><option value="Open">مفتوحة</option><option value="Closed">مغلقة</option></select>
     </div>
     <div class="fld" style="flex:1;min-width:200px">
-      <label for="fSearch">بحث في الفعاليات · Search</label>
-      <input id="fSearch" placeholder="اسم الفعالية أو المكان…">
+      <label for="fEvent">الفعالية · Event</label>
+      <select id="fEvent"><option value="all">كل الفعاليات</option></select>
     </div>
   </section>
 
@@ -213,7 +213,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Events Dashboard v2.7</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Events Dashboard v2.8</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC — IT Operations Center" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -261,7 +261,7 @@
       render();
     } catch (e) {
       $('err').innerHTML = '<div class="alert err">' + esc(e.message) +
-        (/Unknown action/i.test(e.message) ? ' — حدّث Code.gs إلى v2.7 وانشر نسخة جديدة (New version).' : '') + '</div>';
+        (/Unknown action/i.test(e.message) ? ' — حدّث Code.gs إلى v2.8 وانشر نسخة جديدة (New version).' : '') + '</div>';
     }
     b.disabled = false;
   }
@@ -280,23 +280,37 @@
     return [null, null];
   }
 
-  function filtered() {
+  // Events matching period + status (these populate the event dropdown)
+  function inScope() {
     const [from, to] = range();
-    const st = $('fStatus').value, q = $('fSearch').value.trim().toLowerCase();
-    const evs = DATA.events.filter(e => {
+    const st = $('fStatus').value;
+    return DATA.events.filter(e => {
       const d = new Date(String(e.start).slice(0, 16));
       if (from && d < from) return false;
       if (to && d > to) return false;
       if (st !== 'all' && e.status !== st) return false;
-      if (q && !(e.name + ' ' + e.location).toLowerCase().includes(q)) return false;
       return true;
-    });
+    }).sort((a, b) => String(b.start).localeCompare(String(a.start)));
+  }
+
+  function fillEventList() {
+    const sel = $('fEvent'), keep = sel.value;
+    const list = inScope();
+    sel.innerHTML = '<option value="all">كل الفعاليات (' + list.length + ')</option>' + list.map(e =>
+      '<option value="' + esc(e.id) + '">' + esc(e.name) + ' — ' + esc(fmtDate(e.start)) + '</option>').join('');
+    sel.value = list.some(e => e.id === keep) ? keep : 'all';
+  }
+
+  function filtered() {
+    const one = $('fEvent').value;
+    const evs = inScope().filter(e => one === 'all' || e.id === one);
     const ids = new Set(evs.map(e => e.id));
     return { evs, att: DATA.attendance.filter(a => ids.has(a.e)), fb: DATA.feedback.filter(f => ids.has(f.e)) };
   }
 
   /* ---------- render ---------- */
   function render() {
+    fillEventList();
     const { evs, att, fb } = filtered();
     const byEv = {}; att.forEach(a => byEv[a.e] = (byEv[a.e] || 0) + 1);
     const fbEv = {}; fb.forEach(f => { const o = fbEv[f.e] || (fbEv[f.e] = { n: 0, s: 0 }); o.n++; o.s += +f.r; });
@@ -401,7 +415,7 @@
       : '<tr><td colspan="5" class="empty-chart">لا يوجد حضور متكرر بعد</td></tr>';
 
     const [f, t] = range();
-    $('printRange').textContent = (f ? 'من ' + f.toLocaleDateString('en-CA') : 'كل الفترات') + (t ? ' إلى ' + t.toLocaleDateString('en-CA') : '') + ' · v2.7';
+    $('printRange').textContent = (f ? 'من ' + f.toLocaleDateString('en-CA') : 'كل الفترات') + (t ? ' إلى ' + t.toLocaleDateString('en-CA') : '') + ' · v2.8';
     icons();
   }
 
@@ -480,7 +494,7 @@
   /* ---------- filters ---------- */
   $('fPeriod').onchange = () => { document.querySelectorAll('.cust').forEach(c => c.classList.toggle('hidden', $('fPeriod').value !== 'custom')); render(); };
   ['fFrom', 'fTo', 'fStatus'].forEach(id => $(id).onchange = render);
-  $('fSearch').oninput = render;
+  $('fEvent').onchange = render;
   $('auto').onchange = () => { clearInterval(timer); if ($('auto').checked) timer = setInterval(load, 60000); };
 
   icons();

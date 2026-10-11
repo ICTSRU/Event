@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 2.7
+ * Version: 2.8
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '2.7';
+const APP_VERSION = '2.8';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';

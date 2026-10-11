@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 1.4
+ * Version: 1.7
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,7 +13,7 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.7';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
@@ -67,6 +67,8 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   try {
     if (p.action === 'getEvent') return json_(getEventPublic_(p.id));
+    if (p.action === 'checkin') return json_(checkin_(p));
+    if (p.action === 'checkStatus') return json_(checkStatus_(p.id, p.email));
     return json_({ ok: true, app: 'SRU Event Attendance & Management Platform', version: APP_VERSION, sheet: ss_().getName() });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
@@ -84,6 +86,7 @@ function doPost(e) {
     switch (body.action) {
       case 'getEvent': return json_(getEventPublic_(body.id));
       case 'checkin': return json_(checkin_(body));
+      case 'checkStatus': return json_(checkStatus_(body.id, body.email));
     }
     requireAdmin_(body.key);
     switch (body.action) {
@@ -214,6 +217,16 @@ function checkin_(b) {
   } finally {
     lock.releaseLock();
   }
+}
+
+ // Lets the check-in page confirm a registration if the first reply was lost on the network
+function checkStatus_(id, email) {
+  email = String(email || '').trim().toLowerCase();
+  if (!id || !email) return { ok: false, error: 'Missing data' };
+  const found = rows_(SH_ATT).filter(function (r) {
+    return r.EventID === String(id).trim() && String(r.Email).toLowerCase() === email;
+  })[0];
+  return { ok: true, registered: !!found, emailSent: !!found && found.ThankYouSent === 'Yes' };
 }
 
 /* ------------------------------------------------------------------ */

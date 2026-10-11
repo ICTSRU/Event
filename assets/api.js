@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v1.4)
+/* SRU Event Attendance & Management Platform — API client (v1.7)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -20,17 +20,27 @@
   function apiUrl() { return cleanUrl(store('ea_api_url')) || cleanUrl(cfg.API_URL); }
   function isDemo() { return !apiUrl(); }
 
+  const PUBLIC = ['getEvent', 'checkin', 'checkStatus'];
+
   async function call(action, payload) {
-    const body = Object.assign({ action: action, key: store('ea_admin_key') || '' }, payload || {});
+    const body = Object.assign({ action: action, key: store('ea_admin_key') || cfg.ADMIN_KEY || '' }, payload || {});
     if (isDemo()) return demo(action, body);
     let res;
     try {
-      // text/plain avoids a CORS pre-flight with Apps Script
-      res = await fetch(apiUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(body)
-      });
+      if (PUBLIC.indexOf(action) >= 0) {
+        // Public (visitor) calls use a simple GET — most reliable on iPhone/Safari with Apps Script redirects
+        const q = new URLSearchParams();
+        Object.keys(body).forEach(k => { if (k !== 'key' && body[k] != null) q.set(k, body[k]); });
+        q.set('_', Date.now());
+        res = await fetch(apiUrl() + '?' + q.toString(), { method: 'GET', redirect: 'follow', cache: 'no-store' });
+      } else {
+        // text/plain avoids a CORS pre-flight with Apps Script
+        res = await fetch(apiUrl(), {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(body)
+        });
+      }
     } catch (e) {
       throw new Error('تعذر الاتصال بالخادم — تأكد من رابط Web App وأن النشر متاح لـ Anyone | Network error');
     }
@@ -88,6 +98,10 @@
         if (d.att.some(a => a.eventId === e.id && a.email === email)) return Promise.resolve({ ok: true, duplicate: true, event: e });
         d.att.push({ eventId: e.id, time: nowIso(), name: String(b.name).trim(), email: email, thankYou: 'Demo (not sent)' });
         save(d); return Promise.resolve({ ok: true, duplicate: false, emailSent: false, event: e });
+      }
+      case 'checkStatus': {
+        const em = String(b.email || '').trim().toLowerCase();
+        return Promise.resolve({ ok: true, registered: d.att.some(a => a.eventId === b.id && a.email === em), emailSent: false });
       }
       case 'getAttendance': {
         const e = find(b.id); if (!e) return fail('Event not found');

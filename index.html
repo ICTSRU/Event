@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v1.4</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v1.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -66,7 +66,7 @@
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v1.4</span>
+      <span class="ver en">v1.7</span>
       <a class="btn secondary sm" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
       <button class="btn secondary sm" id="btnSettings"><i data-lucide="settings"></i> الإعدادات</button>
     </div>
@@ -89,6 +89,11 @@
         <label class="f">مفتاح المسؤول <span class="en">Admin key</span></label>
         <input id="setKey" type="password" class="en" style="width:100%" autocomplete="off">
         <div class="small muted">يظهر في سجل التنفيذ بعد تشغيل <span class="en">setup()</span>.</div>
+      </div>
+      <div style="grid-column:1/-1">
+        <label class="f">رابط المنصة المنشور <span class="en">Public site URL (GitHub Pages) — used inside the QR code</span></label>
+        <input id="setPublic" class="en" style="width:100%" placeholder="https://ictsru.github.io/event-attendance/">
+        <div class="small muted">رابط المجلد الذي يحتوي <span class="en">checkin.html</span> على الإنترنت. بدونه يُبنى رمز QR من عنوان الصفحة الحالية، ولن يعمل على الجوال إذا فُتحت الصفحة من جهازك.</div>
       </div>
     </div>
     <div id="setMsg"></div>
@@ -178,7 +183,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img src="assets/logo-sru.png" alt="" onerror="this.remove()">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v1.4</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v1.7</div></div>
             <img src="assets/logo-ictd.png" alt="" onerror="this.remove()">
           </div>
         </div>
@@ -205,6 +210,7 @@
           <div class="qr-box">
             <div id="qr"></div>
             <div style="flex:1;min-width:260px">
+              <div id="qrWarn"></div>
               <h3 style="margin-top:0">رابط تسجيل الحضور <span class="en muted small">Check-in link</span></h3>
               <div class="link-row">
                 <input id="qrLink" readonly>
@@ -265,7 +271,7 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v1.4</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v1.7</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC — IT Operations Center" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -304,8 +310,12 @@
     if (on) { btn._html = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
     else { btn.disabled = false; if (btn._html) btn.innerHTML = btn._html; icons(); }
   }
+  function publicBase() { return (EA.store('ea_public_url') || EA.cfg.PUBLIC_URL || '').trim(); }
+  function isReachable(u) { return /^https?:\/\//i.test(u) && !/\/\/(localhost|127\.|10\.|192\.168\.|0\.0\.0\.0)/i.test(u); }
   function checkinUrl(id) {
-    const base = new URL(EA.cfg.CHECKIN_PAGE || 'checkin.html', location.href);
+    let pb = publicBase();
+    if (pb && !/\.html?$/i.test(pb) && !pb.endsWith('/')) pb += '/';
+    const base = pb && /\.html?$/i.test(pb) ? new URL(pb) : new URL(EA.cfg.CHECKIN_PAGE || 'checkin.html', pb || location.href);
     base.searchParams.set('e', id);
     return base.href;
   }
@@ -319,7 +329,8 @@
   /* ---------- settings ---------- */
   function openSettings() {
     $('setUrl').value = EA.apiUrl();
-    $('setKey').value = EA.store('ea_admin_key') || '';
+    $('setKey').value = EA.store('ea_admin_key') || EA.cfg.ADMIN_KEY || '';
+    $('setPublic').value = publicBase();
     $('settings').classList.remove('hidden');
   }
   $('btnSettings').onclick = openSettings;
@@ -330,9 +341,13 @@
     const clean = EA.cleanUrl(raw);
     if (raw && !clean) { msg('setMsg', 'err', 'رابط غير صالح — يجب أن يبدأ بـ https://script.google.com/ وينتهي بـ /exec'); return; }
     $('setUrl').value = clean;
+    const pub = $('setPublic').value.trim();
+    if (pub && !/^https:\/\/[^\s]+$/i.test(pub)) { msg('setMsg', 'err', 'رابط المنصة المنشور يجب أن يبدأ بـ https://'); return; }
+    EA.store('ea_public_url', pub && pub !== (EA.cfg.PUBLIC_URL || '') ? pub : null);
     // Store only if it differs from the default in config.js
     EA.store('ea_api_url', clean && clean !== EA.cleanUrl(EA.cfg.API_URL) ? clean : null);
-    EA.store('ea_admin_key', $('setKey').value.trim() || null);
+    const k = $('setKey').value.trim();
+    EA.store('ea_admin_key', k && k !== (EA.cfg.ADMIN_KEY || '') ? k : null);
     busy(b, true);
     try {
       const v = await EA.call('verify');
@@ -473,6 +488,9 @@
     const url = checkinUrl(current.id);
     $('qrLink').value = url;
     $('btnOpenCheckin').href = url;
+    $('qrWarn').innerHTML = isReachable(url) ? '' :
+      '<div class="alert err"><b>هذا الرابط لا يعمل على الجوال.</b> الصفحة مفتوحة من جهازك (<span class="en">' + esc(url.split('?')[0].slice(0, 60)) + '…</span>). ' +
+      'ارفع المجلد إلى GitHub Pages ثم ضع رابطه في <b>الإعدادات ← رابط المنصة المنشور</b>، أو افتح لوحة الإدارة من رابط GitHub Pages مباشرة.</div>';
     $('qr').innerHTML = '';
     new QRCode($('qr'), { text: url, width: 480, height: 480, colorDark: '#241436', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
   }
@@ -502,7 +520,7 @@
       '</style></head><body><div class="band"><img src="' + logo('logo-ictd.png') + '" onerror="this.style.visibility=\'hidden\'"><img src="' + logo('logo-sru.png') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
       '<h1>' + esc(e.name) + '</h1><div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v1.4</div>' +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v1.7</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -547,7 +565,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v1.4</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v1.7</p>';
   }
 
   $('btnCsv').onclick = () => {
@@ -605,7 +623,7 @@
   $('itocLink').href = EA.cfg.ITOC_URL || '#';
   if (EA.cfg.SHEET_URL) $('btnSheet').href = EA.cfg.SHEET_URL; else $('btnSheet').classList.add('hidden');
   refreshMode(); icons();
-  if (!EA.isDemo() && !EA.store('ea_admin_key')) openSettings();
+  if (!EA.isDemo() && !EA.store('ea_admin_key') && !EA.cfg.ADMIN_KEY) openSettings();
   loadEvents();
 })();
 </script>

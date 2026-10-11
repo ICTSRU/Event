@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>تسجيل الحضور | Event Check-in — v1.4</title>
+<title>تسجيل الحضور | Event Check-in — v1.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/sru-theme.css">
@@ -77,7 +77,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v1.4</span></span>
+    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v1.7</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC" onerror="this.outerHTML='ITOC'"></a>
   </div>
 </footer>
@@ -143,6 +143,21 @@
     icons();
   }
 
+  async function confirmSaved(email) {
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+      try {
+        const st = await EA.call('checkStatus', { id: id, email: email });
+        if (st.registered) {
+          try { localStorage.setItem('ea_done_' + id, JSON.stringify({ email: email, at: Date.now() })); } catch (x) {}
+          done(false, st.emailSent);
+          return true;
+        }
+      } catch (x) { /* keep trying */ }
+    }
+    return false;
+  }
+
   $('form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = $('name').value.trim(), email = $('email').value.trim();
@@ -155,7 +170,13 @@
       try { localStorage.setItem('ea_done_' + id, JSON.stringify({ email: email, at: Date.now() })); } catch (x) {}
       done(r.duplicate, r.emailSent);
     } catch (err) {
-      if (err.data && err.data.closed) show('التسجيل مغلق.', 'Registration is closed.');
+      if (err.data && err.data.closed) { show('التسجيل مغلق.', 'Registration is closed.'); }
+      else if (!err.data) {
+        // Network-level failure: the check-in may have been saved anyway — confirm with the server
+        const ok = await confirmSaved(email);
+        if (ok) return;
+        show('تعذّر التسجيل، يرجى المحاولة مرة أخرى.', 'Could not register, please try again.');
+      }
       else show('تعذّر التسجيل: ' + err.message, '');
       b.disabled = false; b.innerHTML = '<i data-lucide="check-circle-2"></i> تسجيل الحضور · <span class="en">Submit</span>'; icons();
     }

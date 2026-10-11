@@ -1,5 +1,20 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v1.7 — 2026-10-11
+- Fix: on iPhone/Safari the check-in page could show "Network error" although the attendance was saved and the thank-you e-mail sent.
+  - Visitor actions (`getEvent`, `checkin`, `checkStatus`) now use a simple GET request, which follows the Apps Script redirect reliably.
+  - If the reply is still lost, the page confirms the registration with the new `checkStatus` action (up to 3 tries) and shows success.
+- Backend: `doGet` handles `checkin` and `checkStatus` (requires a new deployment version).
+
+## v1.6 — 2026-10-11
+- Admin key preset in `assets/config.js` (`ADMIN_KEY`) — the admin console connects without entering the key. A key typed in Settings still overrides it on that browser.
+- Security note: the key is readable by anyone who can open `config.js` on a public site; rotate it in Script Properties if exposed.
+
+## v1.5 — 2026-10-11
+- Fix: QR code did nothing on phones when the admin console was opened from the local computer (QR contained a `file://` / localhost link).
+- New **Public site URL** setting (`PUBLIC_URL` in `config.js` or Settings) — QR codes and check-in links are always built from the published GitHub Pages address.
+- Warning shown on the QR tab when the check-in link is not reachable from phones.
+
 ## v1.4 — 2026-10-11
 - Fix: "Network error" when the Settings URL field contained extra text (e.g. `API_URL: '…'`). The pasted value is now cleaned to the bare `https://script.google.com/…/exec` URL; invalid input is rejected with a clear message.
 - A previously saved bad URL in the browser is ignored automatically; the default from `config.js` is used.

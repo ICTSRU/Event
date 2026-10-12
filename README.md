@@ -1,59 +1,70 @@
-# SRU Event Attendance & Management Platform · منصة تسجيل حضور وإدارة الفعاليات — v3.0
+# منصة تسجيل حضور وإدارة الفعاليات · Event Attendance & Management Platform — v3.4
 
-QR-based attendance for any event: the organizer creates an event, prints its QR code, visitors scan and check in with name + e-mail, receive an automatic thank-you e-mail, and every check-in is stored in Google Sheets. The admin console produces attendance reports and sends e-mails to all attendees of an event.
+QR attendance, thank-you and evaluation e-mails, agenda, reports and dashboard for SRU events.
+From v3.4 the admin console and dashboard are protected with the **SRU Secure Access Kit v1.4**:
+sign-in with the university Google account (@sr.edu.sa), an access list, and a sign-in log.
 
-## Components
+## Architecture
+```
+Visitors (any phone, no sign-in)                    Staff (SRU Google accounts on the access list)
+github/checkin.html · feedback.html                 github/index.html  (branded sign-in page)
+        │  fetch                                            │  link
+        ▼                                                   ▼
+Apps Script deployment A — "Anyone"                 Apps Script deployment B — "Anyone within Sulaiman Al Rajhi University"
+public JSON API only (check-in, evaluation)        Admin.html + Dashboard.html, google.script.run.api()
+        └──────────────── same project · same Google Sheet ────────────────┘
+```
+- **One Apps Script project, two web-app deployments** of the same code:
+  - **A (existing, Anyone):** used by the visitor pages. Admin actions are refused on this endpoint.
+  - **B (new, Anyone within SRU):** serves the console and dashboard.
+- Every admin call re-checks the signed-in Google account against `AllowedUsers` on the server.
+- No passwords and no keys are kept in the platform: sign-in happens on Google's page.
 
-| File | Purpose |
+## Folders
+| Path | Upload to | Contents |
+|---|---|---|
+| `apps-script/` | the Apps Script project bound to the Sheet | `Code.gs`, `SecureAccess.gs`, `Feedback.gs`, `EmailAssets.gs`, `appsscript.json`, HTML files `Admin`, `Dashboard`, `Client`, `Styles`, `Logos`, `Denied` |
+| `github/` | the GitHub Pages repository (its root) | `index.html` (sign-in landing), `checkin.html`, `feedback.html`, `dashboard.html` (redirect), `assets/` |
+
+## Sheet tabs
+| Tab | Purpose |
 |---|---|
-| `index.html` | Admin console — create/edit events, QR code + printable poster, attendance report (KPIs, hourly chart, CSV/Excel, print/PDF), bulk e-mail, all-events overview |
-| `dashboard.html` | Events & attendance dashboard — KPIs, attendees per event, monthly trend, check-ins by hour/weekday, internal vs external, top domains, events summary, repeat attendees; filters, auto-refresh, Excel export, print/PDF |
-| `feedback.html` | Event evaluation page opened from the evaluation e-mail — 5-point Likert satisfaction + open suggestions; personal signed link |
-| `checkin.html` | Public check-in page opened by the QR code (`checkin.html?e=EVENT_ID`) — bilingual, mobile-first |
-| `assets/config.js` | Set `API_URL` (Apps Script Web App URL) |
-| `assets/api.js` | API client + built-in DEMO backend (used when `API_URL` is empty) |
-| `assets/sru-theme.css` | SRU identity tokens (purple #501e8c, blue #0a6eaa, Cairo, RTL) |
-| `assets/logo-*.png` | **Add these:** `logo-sru.png`, `logo-ictd.png`, `logo-itoc.png` (text fallbacks show until added) |
-| `apps-script/Code.gs` | Backend — Sheets storage, thank-you e-mail, reports, bulk e-mail |
-| `apps-script/Feedback.gs` | Event evaluation: signed links, responses (sheet `Feedback`), manual/automatic sending — add as a third script file |
-| `apps-script/EmailAssets.gs` | Logos and check icon embedded in e-mails (inline images) — add as a second script file |
-| `apps-script/appsscript.json` | Manifest (Asia/Riyadh, minimal scopes, Web App settings) |
-
-## Data model (Google Sheet)
-
-| Sheet | Columns |
-|---|---|
-| `Events` | EventID, EventName, Location, StartDateTime, EndDateTime, Organizer, Description, Status (Open/Closed), CreatedAt, UpdatedAt, Agenda (JSON list of items: from, to, title, speaker) |
+| `Events` | EventID, EventName, Location, StartDateTime, EndDateTime, Organizer, Description, Status, CreatedAt, UpdatedAt, Agenda |
 | `Attendance` | Timestamp, EventID, EventName, FullName, Email, ThankYouSent, UserAgent |
 | `Feedback` | Timestamp, EventID, EventName, FullName, Email, Rating (1–5), Comment, UpdatedAt |
 | `MailLog` | Timestamp, EventID, Subject, Recipients, Sent, Failed, Notes |
+| `AllowedUsers` | email, name, role (`admin` / `user`), active ☑, notes — who may open the console |
+| `AccessLog` | timestamp, date, time, day, email, result (دخول / مرفوض / غير مدرج), version |
 
-## Setup (≈10 minutes)
+## Upgrade from v3.2 (≈15 min)
+1. **Apps Script** (Extensions ▸ Apps Script from the Sheet):
+   - Replace `Code.gs`, `Feedback.gs`, `EmailAssets.gs`, `appsscript.json`.
+   - **Delete** `Users.gs` (password sign-in is retired).
+   - Add script file `SecureAccess` and HTML files `Admin`, `Dashboard`, `Client`, `Styles`, `Logos`, `Denied` (＋ ▸ HTML; name without `.html`).
+   - In `SecureAccess.gs` CONFIG, trim `DEFAULT_ALLOWED` to the people who manage events.
+2. Run **`setup`** once → creates `AllowedUsers` and `AccessLog`, removes the old admin key.
+3. **Deployment A (existing):** Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: **New version** ▸ Deploy. URL unchanged; visitor pages keep working.
+4. **Deployment B (new):** Deploy ▸ **New deployment** ▸ Web app — Execute as **Me**, Who has access **Anyone within Sulaiman Al Rajhi University**. Copy its URL.
+5. Open deployment B's URL, sign in, then open **⚙ الإعدادات** and set:
+   - رابط صفحات الزوار — the GitHub Pages folder (used in QR codes)
+   - رابط المنصة الآمن — deployment B's URL
+   - رابط صفحة الدخول — the GitHub landing page
+6. **GitHub (`melmahdy-2030/event`):** delete the current files, then drag the **contents** of `github/` — including the `assets` folder itself — into *Add file ▸ Upload files*. The pages load `assets/…`; files uploaded flat at the root are not found. In `index.html` CONFIG set `WEB_APP_URL` to deployment B's URL.
+7. **Test:** own account ✓ · Incognito → Google sign-in ✓ · personal Gmail → refused ✓ · scan a QR code ✓.
 
-1. **Create a Google Sheet** (e.g. *ICTD Event Attendance*) using the account that should send the e-mails.
-2. **Extensions → Apps Script.** Replace `Code.gs` with `apps-script/Code.gs`, then add a new script file **EmailAssets** (＋ → Script) and paste `apps-script/EmailAssets.gs`. Enable *Project Settings → Show appsscript.json* and paste `apps-script/appsscript.json`.
-3. Run **`setup()`** once and approve permissions. Open *Executions / Logs* and copy the **ADMIN_KEY** (stored in *Project Settings → Script properties*; change it there any time).
-4. **Deploy → New deployment → Web app** — *Execute as: Me*, *Who has access: Anyone*. Copy the `/exec` URL.
-5. Put the URL in `assets/config.js` → `API_URL` (or paste it in the console under **الإعدادات / Settings**).
-6. Add the three logo PNGs to `assets/`, push the folder to GitHub, and enable **GitHub Pages**.
-7. Open `index.html`, enter the admin key in Settings, create an event, print the QR poster.
+Later code updates: update **both** deployments (Manage deployments ▸ ✏️ ▸ New version), so their URLs stay the same.
 
-> After editing `Code.gs`, use **Deploy → Manage deployments → Edit → New version** so the same `/exec` URL keeps working.
+## Access list
+- `ACCESS_MODE = 'LIST'` (default): only active rows in `AllowedUsers` plus `OWNER_EMAILS`. `'DOMAIN'`: any @sr.edu.sa account.
+- Roles: `admin` = مسؤول النظام (users window ⚙ settings), `user` = منظم فعاليات (events, reports, e-mails, dashboard).
+- Manage from the console (**المستخدمون**) or directly in the sheet; changes apply within 2 minutes.
+- New users added from the console get an e-mail with the platform link (optional).
+
+## Access log
+Every sign-in is written to `AccessLog`. The same user within 30 minutes counts as one row. Refused and not-listed attempts are logged too.
+The Sheet menu **منصة الفعاليات** has three items: a 30-day summary, purge entries older than 180 days, and show the platform URL.
 
 ## Security notes
-
-- *Anyone* access is required so visitors can check in without signing in. Only `getEvent` and `checkin` are public; every admin action requires the **ADMIN_KEY**.
-- The admin key is kept in the admin's browser (localStorage) — do not use the console on shared PCs, and rotate the key in Script properties if exposed.
-- Inputs are length-limited, e-mail validated, HTML-escaped in e-mails, and protected against spreadsheet formula injection. Duplicate check-ins (same e-mail + event) are ignored.
-- Check-in is accepted only while the event status is **Open**.
-
-## E-mail limits
-
-`MailApp` daily quota: ~1,500 recipients/day on Google Workspace (100 on consumer Gmail). The console shows the remaining quota; bulk sends stop at the limit and log the skipped count in `MailLog`.
-
-## Demo mode
-
-With `API_URL` empty the whole flow works locally (events and check-ins stored in the browser, no e-mails sent) — useful for a walkthrough before deployment.
-
----
-Executive Directorate of Communications & IT — Sulaiman Al Rajhi University · ITOC
+- Keep the Google Sheet private: it holds attendee and staff e-mails.
+- The public deployment accepts only visitor actions; its bare URL shows the "SRU accounts only" page.
+- Evaluation links are HMAC-signed per attendee; test copies never save answers.

@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>تسجيل الحضور | Event Check-in — v3.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/sru-theme.css">
+<style>
+  body{min-height:100vh;display:flex;flex-direction:column}
+  main{flex:1;width:100%;max-width:520px;margin:0 auto;padding:18px 16px 30px}
+  .brand-band img{height:44px}
+  .hero{background:var(--purple);color:#fff;border-radius:var(--radius) var(--radius) 0 0;padding:18px}
+  .hero .k{font-size:12px;opacity:.85}
+  .hero h1{margin:4px 0 8px;font-size:21px;line-height:1.4}
+  .hero .m{font-size:13.5px;display:flex;flex-direction:column;gap:3px;opacity:.95}
+  .hero svg{width:15px;height:15px;vertical-align:-3px}
+  .panel{background:#fff;border:1px solid var(--border);border-top:none;border-radius:0 0 var(--radius) var(--radius);padding:18px}
+  .diag{border-radius:0}
+  .btn.full{width:100%;padding:12px;font-size:16px}
+  .done{text-align:center;padding:10px 0}
+  .done .ic{width:64px;height:64px;border-radius:50%;background:var(--ok-bg);color:var(--ok);display:flex;align-items:center;justify-content:center;margin:0 auto 10px}
+  .done .ic svg{width:34px;height:34px}
+  .done h2{margin:6px 0;color:var(--purple-dark)}
+  .consent{font-size:12px;color:var(--muted);margin-top:10px}
+  .state{text-align:center;padding:40px 10px}
+  .agenda{margin-top:18px;border-top:1px solid var(--border);padding-top:14px}
+  .agenda h3{margin:0 0 8px;font-size:15px;color:var(--purple-dark)}
+  .ag-it{display:grid;grid-template-columns:92px 1fr;gap:8px;padding:8px 0;border-bottom:1px dashed var(--border);font-size:14px}
+  .ag-it:last-child{border-bottom:none}
+  .ag-it .tm{color:var(--purple);font-weight:700;font-size:13px;white-space:nowrap}
+  .ag-it .sp{color:var(--muted);font-size:12.5px}
+</style>
+</head>
+<body>
+
+<header class="brand-band">
+  <div class="inner">
+    <span><img src="assets/logo-sru.png" alt="جامعة سليمان الراجحي" onerror="this.outerHTML='&lt;span class=fallback&gt;جامعة سليمان الراجحي&lt;/span&gt;'"></span>
+    <span><img src="assets/logo-ictd.png" alt="ICTD" onerror="this.outerHTML='&lt;span class=fallback&gt;ICTD&lt;/span&gt;'"></span>
+  </div>
+</header>
+
+<main>
+  <div id="loading" class="state"><span class="spinner dark"></span><div class="muted small" style="margin-top:8px">جارٍ تحميل بيانات الفعالية… <span class="en">Loading…</span></div></div>
+  <div id="error" class="hidden"></div>
+
+  <div id="app" class="hidden">
+    <div class="hero">
+      <div class="k">منصة تسجيل حضور وإدارة الفعاليات · <span class="en">Attendance check-in</span></div>
+      <h1 id="evName"></h1>
+      <div class="m" id="evMeta"></div>
+    </div>
+    <div class="diag"></div>
+    <div class="panel">
+
+      <form id="form" novalidate>
+        <div style="margin-bottom:12px">
+          <label class="f" for="name">الاسم الكامل <span class="req">*</span> <span class="en">Full name</span></label>
+          <input id="name" autocomplete="name" maxlength="120" required>
+        </div>
+        <div style="margin-bottom:12px">
+          <label class="f" for="email">البريد الإلكتروني <span class="req">*</span> <span class="en">Email</span></label>
+          <input id="email" type="email" class="en" style="width:100%" inputmode="email" autocomplete="email" maxlength="160" required>
+        </div>
+        <div id="msg"></div>
+        <button class="btn full" id="submit" type="submit"><i data-lucide="check-circle-2"></i> تسجيل الحضور · <span class="en">Submit</span></button>
+        <p class="consent">تُستخدم بياناتك لتوثيق الحضور والتواصل بخصوص هذه الفعالية فقط. <span class="en">Your data is used only to record attendance and contact you about this event.</span></p>
+      </form>
+
+      <div id="agenda" class="agenda hidden"></div>
+
+      <div id="done" class="done hidden">
+        <div class="ic"><i data-lucide="check"></i></div>
+        <h2 id="doneTitle">تم تسجيل حضورك بنجاح</h2>
+        <div class="en muted" id="doneTitleEn">Your attendance has been recorded</div>
+        <p id="doneText"></p>
+        <button class="btn secondary sm" id="another" type="button">تسجيل شخص آخر · <span class="en">Register another person</span></button>
+      </div>
+
+    </div>
+  </div>
+</main>
+
+<footer class="foot">
+  <div class="inner">
+    <span>الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">v3.4</span></span>
+    <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC" onerror="this.outerHTML='ITOC'"></a>
+  </div>
+</footer>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script src="assets/config.js"></script>
+<script src="assets/api.js"></script>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const icons = () => { try { lucide.createIcons(); } catch (e) {} };
+  const id = new URLSearchParams(location.search).get('e') || '';
+  let ev = null;
+
+  $('itocLink').href = EA.cfg.ITOC_URL || '#';
+
+  function fmt(s) {
+    if (!s) return '';
+    const d = new Date(String(s).slice(0, 19));
+    return isNaN(d) ? s : d.toLocaleString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function fail(ar, en) {
+    $('loading').classList.add('hidden'); $('app').classList.add('hidden');
+    $('error').innerHTML = '<div class="state"><div class="alert err">' + esc(ar) + '<br><span class="en">' + esc(en) + '</span></div></div>';
+    $('error').classList.remove('hidden');
+  }
+  function done(duplicate, emailSent) {
+    $('form').classList.add('hidden'); $('done').classList.remove('hidden');
+    if (duplicate) {
+      $('doneTitle').textContent = 'حضورك مسجّل مسبقًا';
+      $('doneTitleEn').textContent = 'You are already checked in';
+      $('doneText').innerHTML = 'لا حاجة للتسجيل مرة أخرى. نتمنى لك فعالية ممتعة!';
+    } else {
+      $('doneTitle').textContent = 'تم تسجيل حضورك بنجاح';
+      $('doneTitleEn').textContent = 'Your attendance has been recorded';
+      $('doneText').innerHTML = (emailSent ? 'أرسلنا رسالة شكر إلى بريدك الإلكتروني. ' : '') +
+        'شكرًا لانضمامك إلينا 🌟<br><span class="en muted small">' + (emailSent ? 'A thank-you email is on its way. ' : '') + 'Thank you for joining us!</span>';
+    }
+    icons();
+  }
+
+  async function init() {
+    if (!id) return fail('رابط غير صالح — يرجى مسح رمز QR الخاص بالفعالية.', 'Invalid link — please scan the event QR code.');
+    try {
+      const r = await EA.call('getEvent', { id: id });
+      ev = r.event;
+    } catch (e) {
+      return fail('لم يتم العثور على الفعالية.', e.message || 'Event not found');
+    }
+    $('evName').textContent = ev.name;
+    $('evMeta').innerHTML =
+      '<span><i data-lucide="map-pin"></i> ' + esc(ev.location) + '</span>' +
+      '<span><i data-lucide="calendar-clock"></i> ' + esc(fmt(ev.start)) + '</span>';
+    if (ev.agenda && ev.agenda.length) {
+      $('agenda').innerHTML = '<h3>برنامج الفعالية <span class="en muted small">Agenda</span></h3>' + ev.agenda.map(a =>
+        '<div class="ag-it"><span class="tm">' + (a.from ? '<span dir="ltr">' + esc(a.from) + '</span>' + (a.to ? ' – <span dir="ltr">' + esc(a.to) + '</span>' : '') : '') + '</span>' +
+        '<span><b>' + esc(a.title) + '</b>' + (a.speaker ? '<div class="sp">' + esc(a.speaker) + '</div>' : '') + '</span></div>').join('');
+      $('agenda').classList.remove('hidden');
+      $('agenda').parentNode.appendChild($('agenda'));   // always shown at the bottom of the card
+    }
+    $('loading').classList.add('hidden'); $('app').classList.remove('hidden');
+
+    let prev = null;
+    try { prev = JSON.parse(localStorage.getItem('ea_done_' + id) || 'null'); } catch (e) {}
+    if (prev) return done(true, false);
+    if (ev.status !== 'Open') {
+      $('form').innerHTML = '<div class="alert warn">التسجيل لهذه الفعالية مغلق حاليًا.<br><span class="en">Registration for this event is closed.</span></div>';
+    }
+    icons();
+  }
+
+  async function confirmSaved(email) {
+    for (let i = 0; i < 3; i++) {
+      await new Promise(r => setTimeout(r, 1500 * (i + 1)));
+      try {
+        const st = await EA.call('checkStatus', { id: id, email: email });
+        if (st.registered) {
+          try { localStorage.setItem('ea_done_' + id, JSON.stringify({ email: email, at: Date.now() })); } catch (x) {}
+          done(false, st.emailSent);
+          return true;
+        }
+      } catch (x) { /* keep trying */ }
+    }
+    return false;
+  }
+
+  $('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = $('name').value.trim(), email = $('email').value.trim();
+    const show = (ar, en) => $('msg').innerHTML = '<div class="alert err">' + esc(ar) + ' <span class="en">' + esc(en) + '</span></div>';
+    if (name.length < 3) return show('يرجى إدخال الاسم الكامل.', 'Please enter your full name.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return show('يرجى إدخال بريد إلكتروني صحيح.', 'Please enter a valid email.');
+    const b = $('submit'); b.disabled = true; b.innerHTML = '<span class="spinner"></span>'; $('msg').innerHTML = '';
+    try {
+      const r = await EA.call('checkin', { id: id, name: name, email: email, ua: navigator.userAgent.slice(0, 200) });
+      try { localStorage.setItem('ea_done_' + id, JSON.stringify({ email: email, at: Date.now() })); } catch (x) {}
+      done(r.duplicate, r.emailSent);
+    } catch (err) {
+      if (err.data && err.data.closed) { show('التسجيل مغلق.', 'Registration is closed.'); }
+      else if (!err.data) {
+        // Network-level failure: the check-in may have been saved anyway — confirm with the server
+        const ok = await confirmSaved(email);
+        if (ok) return;
+        show('تعذّر التسجيل، يرجى المحاولة مرة أخرى.', 'Could not register, please try again.');
+      }
+      else show('تعذّر التسجيل: ' + err.message, '');
+      b.disabled = false; b.innerHTML = '<i data-lucide="check-circle-2"></i> تسجيل الحضور · <span class="en">Submit</span>'; icons();
+    }
+  });
+
+  $('another').onclick = () => {
+    try { localStorage.removeItem('ea_done_' + id); } catch (x) {}
+    $('name').value = ''; $('email').value = ''; $('msg').innerHTML = '';
+    const b = $('submit'); b.disabled = false; b.innerHTML = '<i data-lucide="check-circle-2"></i> تسجيل الحضور · <span class="en">Submit</span>';
+    $('done').classList.add('hidden'); $('form').classList.remove('hidden'); icons(); $('name').focus();
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>

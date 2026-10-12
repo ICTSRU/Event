@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 3.0
+ * Version: 3.4
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,12 +13,12 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '3.0';
+const APP_VERSION = '3.4';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
 
-// 'Agenda' (column K) was added in v3.0 — existing sheets get the header automatically
+// 'Agenda' (column K) was added in v3.4 — existing sheets get the header automatically
 const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
   'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda'];
 const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
@@ -40,15 +40,15 @@ function setup() {
   ensureSheet_(ss, SH_LOG, LOG_HEAD);
   ensureSheet_(ss, SH_FB, FB_HEAD);
   // Keep date-time strings as plain text so Sheets does not reformat them
-  ss.getSheetByName(SH_EVENTS).getRange('A:J').setNumberFormat('@');
+  ss.getSheetByName(SH_EVENTS).getRange('A:K').setNumberFormat('@');
   ss.getSheetByName(SH_ATT).getRange('A:G').setNumberFormat('@');
-
-  const props = PropertiesService.getScriptProperties();
-  if (!props.getProperty('ADMIN_KEY')) {
-    props.setProperty('ADMIN_KEY', Utilities.getUuid().replace(/-/g, '').slice(0, 16));
-  }
-  Logger.log('Setup complete. ADMIN_KEY = ' + props.getProperty('ADMIN_KEY'));
-  Logger.log('Daily e-mail quota remaining: ' + MailApp.getRemainingDailyQuota());
+  // SRU Secure Access Kit: access list + access log
+  const acl = setupAccessList();
+  getLogSheet_();
+  // Retired sign-in methods (≤ v3.4): shared admin key
+  PropertiesService.getScriptProperties().deleteProperty('ADMIN_KEY');
+  Logger.log('Setup complete (v' + APP_VERSION + '). AllowedUsers: ' + acl.total + ' (' + acl.added + ' added). ' +
+    'Daily e-mail quota remaining: ' + MailApp.getRemainingDailyQuota());
 }
 
 function ensureSheet_(ss, name, head) {
@@ -72,18 +72,24 @@ function ensureSheet_(ss, name, head) {
 /* ------------------------------------------------------------------ */
 function doGet(e) {
   const p = (e && e.parameter) || {};
-  try {
-    if (p.action === 'getEvent') return json_(getEventPublic_(p.id));
-    if (p.action === 'checkin') return json_(checkin_(p));
-    if (p.action === 'checkStatus') return json_(checkStatus_(p.id, p.email));
-    if (p.action === 'fbInfo') return json_(fbInfo_(p));
-    if (p.action === 'feedback' || p.action === 'rate') return json_(submitFeedback_(p));
-    return json_({ ok: true, app: 'SRU Event Attendance & Management Platform', version: APP_VERSION, sheet: ss_().getName() });
-  } catch (err) {
-    return json_({ ok: false, error: String(err.message || err) });
+  // Public visitor API (check-in / evaluation pages on GitHub Pages)
+  if (p.action) {
+    try {
+      if (p.action === 'getEvent') return json_(getEventPublic_(p.id));
+      if (p.action === 'checkin') return json_(checkin_(p));
+      if (p.action === 'checkStatus') return json_(checkStatus_(p.id, p.email));
+      if (p.action === 'fbInfo') return json_(fbInfo_(p));
+      if (p.action === 'feedback' || p.action === 'rate') return json_(submitFeedback_(p));
+      return json_({ ok: false, error: 'Unknown action' });
+    } catch (err) {
+      return json_({ ok: false, error: String(err.message || err) });
+    }
   }
+  // Secure platform (admin console / dashboard) — SRU accounts on the access list only (SecureAccess.gs)
+  return securePage_(p.page);
 }
 
+/** Public JSON API only. Admin actions run exclusively inside the secure pages via google.script.run.api(). */
 function doPost(e) {
   let body = {};
   try {
@@ -100,35 +106,57 @@ function doPost(e) {
       case 'rate':
       case 'feedback': return json_(submitFeedback_(body));
     }
-    requireAdmin_(body.key);
-    switch (body.action) {
-      case 'listEvents': return json_(listEvents_());
-      case 'createEvent': return json_(createEvent_(body.event));
-      case 'updateEvent': return json_(updateEvent_(body.event));
-      case 'setStatus': return json_(setStatus_(body.id, body.status));
-      case 'getAttendance': return json_(getAttendance_(body.id));
-      case 'dashboard': return json_(dashboard_());
-      case 'feedbackStatus': return json_(feedbackStatus_(body.id));
-      case 'sendFeedback': return json_(sendFeedback_(body));
-      case 'testFeedback': return json_(testFeedback_(body));
-      case 'sendBulk': return json_(sendBulk_(body));
-      case 'quota': return json_({ ok: true, remaining: MailApp.getRemainingDailyQuota() });
-      case 'verify': return json_({ ok: true, sheet: ss_().getName(), sheetUrl: ss_().getUrl() });
-      default: return json_({ ok: false, error: 'Unknown action' });
-    }
+    return json_({ ok: false, error: 'هذه العملية متاحة فقط داخل المنصة الآمنة (حساب الجامعة) | Admin actions are only available inside the secure platform' });
   } catch (err) {
     return json_({ ok: false, error: String(err.message || err) });
   }
 }
 
+/** Admin actions — called by api() in SecureAccess.gs after the @sr.edu.sa + access-list check. */
+function adminAction_(user, body) {
+  switch (body.action) {
+    case 'me': return { ok: true, user: user, version: APP_VERSION };
+    case 'listUsers': requireAdmin_(user); return aclList_();
+    case 'saveUser': requireAdmin_(user); return aclSave_(user, body);
+    case 'setUserActive': requireAdmin_(user); return aclSetActive_(user, body.email, !!body.active);
+    case 'saveSettings': requireAdmin_(user); return saveSettings_(body);
+    case 'listEvents': return listEvents_();
+    case 'createEvent': return createEvent_(body.event);
+    case 'updateEvent': return updateEvent_(body.event);
+    case 'setStatus': return setStatus_(body.id, body.status);
+    case 'getAttendance': return getAttendance_(body.id);
+    case 'dashboard': return dashboard_();
+    case 'feedbackStatus': return feedbackStatus_(body.id);
+    case 'sendFeedback': return sendFeedback_(body);
+    case 'testFeedback': return testFeedback_(body);
+    case 'sendBulk': return sendBulk_(body);
+    case 'quota': return { ok: true, remaining: MailApp.getRemainingDailyQuota() };
+    case 'verify': return { ok: true, sheet: ss_().getName(), sheetUrl: ss_().getUrl() };
+    default: throw new Error('Unknown action');
+  }
+}
+
+function requireAdmin_(user) {
+  if (user.role !== 'admin') throw new Error('هذه العملية متاحة لمسؤول النظام فقط');
+}
+
+/** Admin settings kept in Script Properties: public pages URL (QR codes), secure platform URL, landing URL. */
+function saveSettings_(b) {
+  const pr = PropertiesService.getScriptProperties();
+  const set = function (key, v) {
+    v = String(v || '').trim();
+    if (v && !/^https:\/\/[^\s]+$/i.test(v)) throw new Error('الروابط يجب أن تبدأ بـ https://');
+    if (v) pr.setProperty(key, v); else pr.deleteProperty(key);
+  };
+  if ('publicUrl' in b) set('PUBLIC_URL', b.publicUrl);
+  if ('platformUrl' in b) set('PLATFORM_URL', b.platformUrl);
+  if ('landingUrl' in b) set('LANDING_URL', b.landingUrl);
+  return { ok: true, publicUrl: publicPagesUrl_(), platformUrl: platformUrl_(), landingUrl: pr.getProperty('LANDING_URL') || '' };
+}
+
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-function requireAdmin_(key) {
-  const real = PropertiesService.getScriptProperties().getProperty('ADMIN_KEY');
-  if (!real || String(key || '') !== real) throw new Error('Unauthorized: invalid admin key');
 }
 
 /* ------------------------------------------------------------------ */
@@ -478,8 +506,9 @@ function emailShell_(ev, inner, opts) {
     '<tr><td style="background:' + purple + ';padding:22px 26px;font-family:' + FONT_ + ';color:#ffffff;text-align:right" dir="rtl">' +
       '<div style="font-size:13px;color:#e4d9f3">منصة تسجيل حضور وإدارة الفعاليات · ' + (opts.kicker || '<span dir="ltr" style="white-space:nowrap">Attendance check-in</span>') + '</div>' +
       '<div style="font-size:24px;font-weight:700;line-height:1.5;margin:6px 0 10px">' + esc_(ev.EventName) + '</div>' +
+      (opts.noMeta ? '' :
       '<div style="font-size:15px;line-height:1.9">📍 ' + esc_(ev.Location) + '</div>' +
-      '<div style="font-size:15px;line-height:1.9">🗓️ ' + esc_(fmtArDate_(ev.StartDateTime)) + '</div>' +
+      '<div style="font-size:15px;line-height:1.9">🗓️ ' + esc_(fmtArDate_(ev.StartDateTime)) + '</div>') +
     '</td></tr>' +
     '<tr><td style="background:#0a6eaa;height:6px;line-height:6px;font-size:0">&nbsp;</td></tr>';
   const badge = opts.check

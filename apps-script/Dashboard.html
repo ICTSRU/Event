@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>لوحة مؤشرات الفعاليات والحضور | Events Dashboard — v3.4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<?!= include('Styles') ?>
+<style>
+  :root{ --c1:#7446b3; --c2:#1ba5d6; --grid:rgba(80,30,140,.10); }
+  .filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .filters .fld{display:flex;flex-direction:column;gap:3px;min-width:150px}
+  .filters label{font-size:12.5px;font-weight:600;color:var(--muted)}
+  .filters input,.filters select{padding:7px 9px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+  .card h2 .en{font-weight:400}
+  .sub{font-size:12.5px;color:var(--muted);margin:-6px 0 12px}
+  .kpis{grid-template-columns:repeat(4,1fr)}
+  @media(max-width:900px){.kpis{grid-template-columns:repeat(2,1fr)}}
+  .kpi .d{font-size:12px;color:var(--muted);margin-top:2px}
+  /* horizontal bars */
+  .hbars{display:flex;flex-direction:column;gap:7px}
+  .hrow{display:grid;grid-template-columns:minmax(120px,34%) 1fr 44px;gap:10px;align-items:center;font-size:13.5px;cursor:default}
+  .hrow .lbl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hrow .trk{height:18px;position:relative}
+  .hrow .fill{position:absolute;inset-block:0;inset-inline-start:0;background:var(--c1);border-radius:0 4px 4px 0;min-width:2px}
+  [dir=rtl] .hrow .fill{border-radius:4px 0 0 4px}
+  .hrow .val{font-weight:700;color:var(--ink);text-align:end}
+  .hrow:hover .fill{filter:brightness(1.12)}
+  /* columns */
+  .cols{display:flex;align-items:flex-end;gap:2px;height:190px;border-bottom:1px solid var(--grid);padding-top:18px;direction:ltr;
+        background:repeating-linear-gradient(to top,transparent 0 37px,var(--grid) 37px 38px)}
+  .col{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;min-width:0;position:relative}
+  .col .b{width:min(70%,34px);background:var(--c1);border-radius:4px 4px 0 0;min-height:0}
+  .col .b.zero{height:0!important}
+  .col:hover .b{filter:brightness(1.12)}
+  .col .n{font-size:11px;font-weight:700;color:var(--ink);margin-bottom:2px}
+  .xl{display:flex;gap:2px;direction:ltr;margin-top:4px}
+  .xl span{flex:1;text-align:center;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden}
+  /* split bar */
+  .split{display:flex;height:30px;border-radius:4px;overflow:hidden;gap:2px;background:#fff}
+  .split div{display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;min-width:0}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:13px}
+  .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-inline-end:6px;vertical-align:-1px}
+  .empty-chart{color:var(--muted);text-align:center;padding:30px 0;font-size:13.5px}
+  #tip{position:fixed;pointer-events:none;background:var(--ink);color:#fff;font-size:12.5px;padding:6px 9px;border-radius:4px;z-index:50;opacity:0;transition:opacity .1s;max-width:260px;line-height:1.5}
+  #tip.on{opacity:1}
+  .updated{font-size:12px;opacity:.9}
+  .switch{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:#fff;cursor:pointer}
+  .switch input{width:auto}
+  .share{height:6px;background:var(--purple-light);border-radius:3px;overflow:hidden;min-width:60px}
+  .share span{display:block;height:100%;background:var(--c1)}
+  .stars{color:var(--purple);font-weight:700}
+  .fbl{display:flex;flex-direction:column;gap:10px;max-height:520px;overflow:auto}
+  .fbi{border:1px solid var(--border);border-inline-start:3px solid var(--c1);border-radius:var(--radius);padding:10px 12px;background:#fff}
+  .fbi .h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+  .fbi .c{white-space:pre-line;font-size:14px}
+  .rchip{display:inline-block;min-width:28px;text-align:center;border-radius:999px;padding:0 8px;font-weight:700;font-size:12px;background:var(--purple-light);color:var(--purple-dark)}
+  .print-head{display:none}
+  @media print{
+    .filters,.navbar .actions,.brand-band,footer.foot{display:none!important}
+    .print-head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid var(--purple);padding-bottom:8px;margin-bottom:12px}
+    .print-head img{height:44px}
+    .card{break-inside:avoid;border:1px solid #ddd!important;padding:12px!important}
+  }
+</style>
+</head>
+<body>
+
+<header class="brand-band">
+  <div class="inner">
+    <span><img data-logo="sru" alt="جامعة سليمان الراجحي"></span>
+    <span><img data-logo="ictd" alt="ICTD"></span>
+  </div>
+</header>
+<nav class="navbar">
+  <div class="inner">
+    <div>
+      <h1>لوحة مؤشرات الفعاليات والحضور</h1>
+      <div class="sub en" style="color:#e4d9f3;margin:0">Events &amp; Attendance Dashboard — <span id="updated" class="updated">…</span></div>
+    </div>
+    <div class="actions" style="align-items:center">
+      <span id="authBox" class="actions no-print" style="align-items:center"></span>
+      <label class="switch no-print"><input type="checkbox" id="auto"> تحديث تلقائي كل دقيقة</label>
+      <span class="ver en">v3.4</span>
+      <button class="btn secondary sm" id="btnRefresh"><i data-lucide="refresh-cw"></i> تحديث</button>
+      <button class="btn secondary sm" id="btnCsv"><i data-lucide="file-spreadsheet"></i> Excel</button>
+      <button class="btn secondary sm" id="btnPrint"><i data-lucide="printer"></i> طباعة / PDF</button>
+      <a class="btn secondary sm" href="#" data-page=""><i data-lucide="arrow-right"></i> لوحة الإدارة</a>
+    </div>
+  </div>
+</nav>
+<div class="diag"></div>
+
+<main class="container">
+  <div class="print-head">
+    <img data-logo="sru" alt="">
+    <div style="text-align:center"><b>لوحة مؤشرات الفعاليات والحضور</b><div class="small muted" id="printRange"></div></div>
+    <img data-logo="ictd" alt="">
+  </div>
+
+  <div id="demoNote" class="alert warn hidden">الوضع التجريبي — البيانات من المتصفح فقط.</div>
+  <div id="err"></div>
+
+  <!-- Filters -->
+  <section class="card filters" aria-label="Filters">
+    <div class="fld">
+      <label for="fPeriod">الفترة · Period</label>
+      <select id="fPeriod">
+        <option value="all">كل الفترات</option>
+        <option value="30">آخر 30 يومًا</option>
+        <option value="90">آخر 90 يومًا</option>
+        <option value="month">هذا الشهر</option>
+        <option value="year">هذا العام</option>
+        <option value="custom">مخصص…</option>
+      </select>
+    </div>
+    <div class="fld cust hidden"><label for="fFrom">من · From</label><input type="date" id="fFrom"></div>
+    <div class="fld cust hidden"><label for="fTo">إلى · To</label><input type="date" id="fTo"></div>
+    <div class="fld">
+      <label for="fStatus">الحالة · Status</label>
+      <select id="fStatus"><option value="all">الكل</option><option value="Open">مفتوحة</option><option value="Closed">مغلقة</option></select>
+    </div>
+    <div class="fld" style="flex:1;min-width:200px">
+      <label for="fEvent">الفعالية · Event</label>
+      <select id="fEvent"><option value="all">كل الفعاليات</option></select>
+    </div>
+  </section>
+
+  <!-- KPIs -->
+  <div class="kpis" id="kpis"></div>
+
+  <!-- Per event -->
+  <section class="card">
+    <h2><i data-lucide="bar-chart-3"></i> الحضور حسب الفعالية <span class="en muted small">Attendees per event</span></h2>
+    <div class="sub" id="evSub"></div>
+    <div id="chEvents"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2><i data-lucide="star"></i> توزيع تقييم الرضا <span class="en muted small">Satisfaction (1–5)</span></h2>
+      <div class="sub">ما مدى رضاك العام عن الفعالية؟ — مقياس ليكرت الخماسي</div>
+      <div id="chRating"></div>
+    </section>
+    <section class="card">
+      <h2><i data-lucide="award"></i> متوسط الرضا حسب الفعالية <span class="en muted small">Avg satisfaction per event</span></h2>
+      <div class="sub">الفعاليات التي وصلها تقييم واحد على الأقل (من 5)</div>
+      <div id="chRatingEv"></div>
+    </section>
+  </div>
+
+  <section class="card">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:flex-start">
+      <h2><i data-lucide="message-square-text"></i> المقترحات والملاحظات <span class="en muted small">Suggestions</span></h2>
+      <div class="actions no-print">
+        <input id="fbSearch" placeholder="بحث في المقترحات…" style="max-width:220px;padding:6px 9px">
+        <select id="fbRate" style="max-width:150px;padding:6px 9px"><option value="0">كل التقييمات</option><option value="5">5</option><option value="4">4</option><option value="3">3</option><option value="2">2</option><option value="1">1</option></select>
+        <button class="btn secondary sm" id="btnFbCsv"><i data-lucide="download"></i> تصدير</button>
+      </div>
+    </div>
+    <div class="sub" id="fbSub"></div>
+    <div id="fbList" class="fbl"></div>
+  </section>
+
+  <div class="grid2">
+    <section class="card">
+      <h2><i data-lucide="trending-up"></i> الاتجاه الشهري <span class="en muted small">Attendees by month</span></h2>
+      <div class="sub">عدد المسجلين في فعاليات كل شهر</div>
+      <div id="chMonth"></div>
+    </section>
+    <section class="card">
+      <h2><i data-lucide="clock"></i> وقت التسجيل <span class="en muted small">Check-ins by hour</span></h2>
+      <div class="sub">الساعة التي سجّل فيها الحضور (توقيت الرياض)</div>
+      <div id="chHour"></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section class="card">
+      <h2><i data-lucide="calendar-days"></i> أيام الأسبوع <span class="en muted small">Check-ins by weekday</span></h2>
+      <div class="sub">توزيع التسجيلات على أيام الأسبوع</div>
+      <div id="chDay"></div>
+    </section>
+    <section class="card">
+      <h2><i data-lucide="users"></i> فئة الحضور <span class="en muted small">Internal vs external</span></h2>
+      <div class="sub">حسب نطاق البريد: منسوبو الجامعة (<span class="en">sr.edu.sa</span>) مقابل الزوار</div>
+      <div id="chSplit"></div>
+      <h3 style="margin-top:22px">أكثر النطاقات <span class="en muted small">Top e-mail domains</span></h3>
+      <div id="chDomain"></div>
+    </section>
+  </div>
+
+  <!-- Tables -->
+  <section class="card">
+    <h2><i data-lucide="table"></i> ملخص الفعاليات <span class="en muted small">Events summary</span></h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>الفعالية</th><th>التاريخ</th><th>المكان</th><th>الحالة</th><th>الحضور</th><th>النسبة من الإجمالي</th><th>الردود</th><th>متوسط الرضا</th></tr></thead>
+      <tbody id="tEvents"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card">
+    <h2><i data-lucide="repeat"></i> الحضور المتكرر <span class="en muted small">Most engaged attendees</span></h2>
+    <div class="sub">الأشخاص الذين حضروا أكثر من فعالية ضمن الفترة المحددة</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>عدد الفعاليات</th><th>آخر حضور</th></tr></thead>
+      <tbody id="tRepeat"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<footer class="foot">
+  <div class="inner">
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Events Dashboard v3.4</span></span>
+    <a id="itocLink" href="#" target="_blank" rel="noopener"><img data-logo="itoc" alt="ITOC — IT Operations Center"></a>
+  </div>
+</footer>
+
+<div id="tip" role="tooltip"></div>
+
+<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+<script>window.EA_SERVER = <?!= serverJson ?>;</script>
+<?!= include('Logos') ?>
+<?!= include('Client') ?>
+<script>
+(function () {
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const icons = () => { try { lucide.createIcons(); } catch (e) {} };
+  const nf = n => Number(n || 0).toLocaleString('en-US');
+  const DAYS = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
+  const MONTHS = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+  const INTERNAL = /@(.+\.)?sr\.edu\.sa$/i;
+
+  let DATA = { events: [], attendance: [], feedback: [] };
+  let timer = null;
+
+  $('itocLink').href = EA.cfg.ITOC_URL || '#';
+  if (EA.isDemo()) $('demoNote').classList.remove('hidden');
+
+  /* ---------- tooltip ---------- */
+  const tip = $('tip');
+  document.addEventListener('mousemove', e => {
+    const t = e.target.closest('[data-tip]');
+    if (!t) { tip.classList.remove('on'); return; }
+    tip.innerHTML = t.getAttribute('data-tip');
+    const x = Math.min(e.clientX + 14, innerWidth - tip.offsetWidth - 8);
+    tip.style.left = x + 'px'; tip.style.top = (e.clientY + 14) + 'px';
+    tip.classList.add('on');
+  });
+
+  /* ---------- data ---------- */
+  async function load() {
+    const b = $('btnRefresh'); b.disabled = true;
+    try {
+      const r = await EA.call('dashboard');
+      DATA = { events: r.events || [], attendance: r.attendance || [], feedback: r.feedback || [] };
+      $('updated').textContent = 'آخر تحديث ' + new Date().toLocaleTimeString('ar-SA-u-nu-latn', { hour: '2-digit', minute: '2-digit' });
+      $('err').innerHTML = '';
+      render();
+    } catch (e) {
+      $('err').innerHTML = '<div class="alert err">' + esc(e.message) +
+        (/Unknown action/i.test(e.message) ? ' — حدّث Code.gs إلى v3.4 وانشر نسخة جديدة (New version).' : '') + '</div>';
+    }
+    b.disabled = false;
+  }
+
+  function range() {
+    const p = $('fPeriod').value, now = new Date();
+    const d0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    if (p === '30' || p === '90') return [new Date(d0 - (+p - 1) * 864e5), null];
+    if (p === 'month') return [new Date(now.getFullYear(), now.getMonth(), 1), null];
+    if (p === 'year') return [new Date(now.getFullYear(), 0, 1), null];
+    if (p === 'custom') {
+      const f = $('fFrom').value ? new Date($('fFrom').value + 'T00:00') : null;
+      const t = $('fTo').value ? new Date($('fTo').value + 'T23:59:59') : null;
+      return [f, t];
+    }
+    return [null, null];
+  }
+
+  // Events matching period + status (these populate the event dropdown)
+  function inScope() {
+    const [from, to] = range();
+    const st = $('fStatus').value;
+    return DATA.events.filter(e => {
+      const d = new Date(String(e.start).slice(0, 16));
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      if (st !== 'all' && e.status !== st) return false;
+      return true;
+    }).sort((a, b) => String(b.start).localeCompare(String(a.start)));
+  }
+
+  function fillEventList() {
+    const sel = $('fEvent'), keep = sel.value;
+    const list = inScope();
+    sel.innerHTML = '<option value="all">كل الفعاليات (' + list.length + ')</option>' + list.map(e =>
+      '<option value="' + esc(e.id) + '">' + esc(e.name) + ' — ' + esc(fmtDate(e.start)) + '</option>').join('');
+    sel.value = list.some(e => e.id === keep) ? keep : 'all';
+  }
+
+  function filtered() {
+    const one = $('fEvent').value;
+    const evs = inScope().filter(e => one === 'all' || e.id === one);
+    const ids = new Set(evs.map(e => e.id));
+    return { evs, att: DATA.attendance.filter(a => ids.has(a.e)), fb: DATA.feedback.filter(f => ids.has(f.e)) };
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    fillEventList();
+    const { evs, att, fb } = filtered();
+    const byEv = {}; att.forEach(a => byEv[a.e] = (byEv[a.e] || 0) + 1);
+    const fbEv = {}; fb.forEach(f => { const o = fbEv[f.e] || (fbEv[f.e] = { n: 0, s: 0 }); o.n++; o.s += +f.r; });
+    const fbAvg = fb.length ? fb.reduce((s, f) => s + +f.r, 0) / fb.length : 0;
+    const people = {};
+    att.forEach(a => {
+      const p = people[a.m] || (people[a.m] = { n: a.n, m: a.m, ev: new Set(), last: '' });
+      p.ev.add(a.e); if (a.t > p.last) { p.last = a.t; p.n = a.n; }
+    });
+    const uniq = Object.keys(people).length;
+    const repeat = Object.values(people).filter(p => p.ev.size > 1);
+    const sent = att.filter(a => a.s === 'Yes').length;
+    const open = evs.filter(e => e.status === 'Open').length;
+    const avg = evs.length ? (att.length / evs.length) : 0;
+
+    $('kpis').innerHTML =
+      kpi(nf(evs.length), 'الفعاليات · Events', open + ' مفتوحة للتسجيل') +
+      kpi(nf(att.length), 'إجمالي الحضور · Check-ins', '') +
+      kpi(nf(uniq), 'حضور فريد · Unique people', 'حسب البريد الإلكتروني') +
+      kpi(avg.toFixed(1), 'متوسط الحضور لكل فعالية', 'Avg per event') +
+      kpi(uniq ? Math.round(repeat.length / uniq * 100) + '%' : '—', 'نسبة الحضور المتكرر', nf(repeat.length) + ' حضروا أكثر من فعالية') +
+      kpi(att.length ? Math.round(sent / att.length * 100) + '%' : '—', 'رسائل الشكر المرسلة', nf(sent) + ' من ' + nf(att.length)) +
+      kpi(fb.length ? fbAvg.toFixed(2) + ' / 5' : '—', 'متوسط الرضا · Satisfaction', fb.length ? Math.round(fb.filter(f => f.r >= 4).length / fb.length * 100) + '% راضون أو راضون جدًا' : 'لا توجد تقييمات بعد') +
+      kpi(att.length ? Math.round(fb.length / att.length * 100) + '%' : '—', 'نسبة الاستجابة للتقييم', nf(fb.length) + ' رد من ' + nf(att.length));
+
+    // rating distribution 5 → 1
+    const RL = ['', 'غير راضٍ إطلاقًا', 'غير راضٍ', 'محايد', 'راضٍ', 'راضٍ جدًا'];
+    const rc = [0, 0, 0, 0, 0, 0]; fb.forEach(f => rc[+f.r] = (rc[+f.r] || 0) + 1);
+    const maxR = Math.max(1, ...rc);
+    $('chRating').innerHTML = fb.length ? '<div class="hbars">' + [5, 4, 3, 2, 1].map(v =>
+      '<div class="hrow" data-tip="' + esc(v + ' — ' + RL[v] + ': ' + nf(rc[v]) + ' (' + pct(rc[v], fb.length) + ')') + '">' +
+      '<span class="lbl"><span class="rchip">' + v + '</span> ' + RL[v] + '</span>' +
+      '<span class="trk"><span class="fill" style="width:' + (rc[v] / maxR * 100) + '%"></span></span>' +
+      '<span class="val">' + pct(rc[v], fb.length) + '</span></div>').join('') + '</div>' +
+      '<div class="small muted" style="margin-top:8px">عدد الردود: ' + nf(fb.length) + '</div>' : empty();
+
+    const evR = evs.filter(e => fbEv[e.id]).map(e => ({ e, a: fbEv[e.id].s / fbEv[e.id].n, n: fbEv[e.id].n })).sort((a, b) => b.a - a.a).slice(0, 12);
+    $('chRatingEv').innerHTML = evR.length ? '<div class="hbars">' + evR.map(x =>
+      '<div class="hrow" data-tip="' + esc('<b>' + esc(x.e.name) + '</b><br>متوسط ' + x.a.toFixed(2) + ' / 5 من ' + x.n + ' رد') + '">' +
+      '<span class="lbl" title="' + esc(x.e.name) + '">' + esc(x.e.name) + '</span>' +
+      '<span class="trk"><span class="fill" style="width:' + (x.a / 5 * 100) + '%"></span></span>' +
+      '<span class="val">' + x.a.toFixed(1) + '</span></div>').join('') + '</div>' : empty();
+
+    renderComments(fb);
+
+    // per event (top 12)
+    const ranked = evs.map(e => ({ e, n: byEv[e.id] || 0 })).sort((a, b) => b.n - a.n);
+    const top = ranked.slice(0, 12), maxE = Math.max(1, ...top.map(x => x.n));
+    $('evSub').textContent = ranked.length > 12 ? 'أعلى 12 فعالية من ' + ranked.length + ' — القائمة الكاملة في جدول الملخص أدناه' : 'مرتبة تنازليًا حسب عدد الحضور';
+    $('chEvents').innerHTML = top.length ? '<div class="hbars">' + top.map(x =>
+      '<div class="hrow" data-tip="' + esc('<b>' + esc(x.e.name) + '</b><br>' + fmtDate(x.e.start) + '<br>الحضور: ' + nf(x.n)) + '">' +
+      '<span class="lbl" title="' + esc(x.e.name) + '">' + esc(x.e.name) + '</span>' +
+      '<span class="trk"><span class="fill" style="width:' + (x.n / maxE * 100) + '%"></span></span>' +
+      '<span class="val">' + nf(x.n) + '</span></div>').join('') + '</div>' : empty();
+
+    // month (by event start month)
+    const evMap = {}; DATA.events.forEach(e => evMap[e.id] = e);
+    const mCount = {};
+    att.forEach(a => { const k = String((evMap[a.e] || {}).start || a.t).slice(0, 7); if (k) mCount[k] = (mCount[k] || 0) + 1; });
+    const mKeys = monthSpan(Object.keys(mCount));
+    $('chMonth').innerHTML = columns(mKeys.map(k => ({ l: MONTHS[+k.slice(5, 7) - 1].slice(0, 3) + ' ' + k.slice(2, 4), v: mCount[k] || 0, tip: MONTHS[+k.slice(5, 7) - 1] + ' ' + k.slice(0, 4) })));
+
+    // hour
+    const hCount = {}; att.forEach(a => { const h = +String(a.t).slice(11, 13); if (!isNaN(h)) hCount[h] = (hCount[h] || 0) + 1; });
+    const hs = Object.keys(hCount).map(Number);
+    const h0 = hs.length ? Math.min(...hs, 8) : 8, h1 = hs.length ? Math.max(...hs, 16) : 16;
+    const hr = []; for (let h = h0; h <= h1; h++) hr.push({ l: String(h).padStart(2, '0'), v: hCount[h] || 0, tip: String(h).padStart(2, '0') + ':00 – ' + String(h).padStart(2, '0') + ':59' });
+    $('chHour').innerHTML = columns(hr);
+
+    // weekday (Sun..Sat)
+    const dCount = [0, 0, 0, 0, 0, 0, 0];
+    att.forEach(a => { const d = new Date(String(a.t).slice(0, 19)); if (!isNaN(d)) dCount[d.getDay()]++; });
+    $('chDay').innerHTML = columns(dCount.map((v, i) => ({ l: DAYS[i].replace('ال', ''), v, tip: DAYS[i] })));
+
+    // internal vs external
+    const inN = att.filter(a => INTERNAL.test(a.m)).length, exN = att.length - inN;
+    $('chSplit').innerHTML = att.length ?
+      '<div class="split" role="img" aria-label="Internal ' + inN + ', external ' + exN + '">' +
+      (inN ? '<div style="flex:' + inN + ';background:var(--c1)" data-tip="منسوبو الجامعة: ' + nf(inN) + '">' + pct(inN, att.length) + '</div>' : '') +
+      (exN ? '<div style="flex:' + exN + ';background:var(--c2)" data-tip="زوار من خارج الجامعة: ' + nf(exN) + '">' + pct(exN, att.length) + '</div>' : '') +
+      '</div><div class="legend"><span><i style="background:var(--c1)"></i>منسوبو الجامعة · Internal — ' + nf(inN) + '</span>' +
+      '<span><i style="background:var(--c2)"></i>زوار · External — ' + nf(exN) + '</span></div>' : empty();
+
+    const dom = {}; att.forEach(a => { const d = (a.m.split('@')[1] || '—'); dom[d] = (dom[d] || 0) + 1; });
+    const dTop = Object.entries(dom).sort((a, b) => b[1] - a[1]).slice(0, 5), maxD = Math.max(1, ...dTop.map(x => x[1]));
+    $('chDomain').innerHTML = dTop.length ? '<div class="hbars">' + dTop.map(([d, n]) =>
+      '<div class="hrow" data-tip="' + esc(d + ': ' + nf(n)) + '"><span class="lbl en">' + esc(d) + '</span>' +
+      '<span class="trk"><span class="fill" style="width:' + (n / maxD * 100) + '%"></span></span><span class="val">' + nf(n) + '</span></div>').join('') + '</div>' : empty();
+
+    // tables
+    const tot = Math.max(1, att.length);
+    $('tEvents').innerHTML = ranked.length ? ranked.map(x =>
+      '<tr><td><b>' + esc(x.e.name) + '</b></td><td>' + esc(fmtDate(x.e.start)) + '</td><td>' + esc(x.e.location) + '</td>' +
+      '<td>' + (x.e.status === 'Open' ? '<span class="chip open">مفتوحة</span>' : '<span class="chip closed">مغلقة</span>') + '</td>' +
+      '<td><b>' + nf(x.n) + '</b></td><td><div style="display:flex;gap:8px;align-items:center"><div class="share"><span style="width:' + (x.n / tot * 100) + '%"></span></div><span class="small">' + pct(x.n, tot) + '</span></div></td>' +
+      '<td>' + (fbEv[x.e.id] ? nf(fbEv[x.e.id].n) : '—') + '</td><td>' + (fbEv[x.e.id] ? '<span dir="ltr"><span class="stars">' + (fbEv[x.e.id].s / fbEv[x.e.id].n).toFixed(2) + '</span> / 5</span>' : '—') + '</td></tr>').join('')
+      : '<tr><td colspan="8" class="empty-chart">لا توجد فعاليات في الفترة المحددة</td></tr>';
+
+    const rep = repeat.sort((a, b) => b.ev.size - a.ev.size || b.last.localeCompare(a.last)).slice(0, 15);
+    $('tRepeat').innerHTML = rep.length ? rep.map((p, i) =>
+      '<tr><td>' + (i + 1) + '</td><td>' + esc(p.n) + '</td><td><span class="en">' + esc(p.m) + '</span></td><td><b>' + p.ev.size + '</b></td><td><span class="en">' + esc(String(p.last).replace('T', ' ').slice(0, 16)) + '</span></td></tr>').join('')
+      : '<tr><td colspan="5" class="empty-chart">لا يوجد حضور متكرر بعد</td></tr>';
+
+    const [f, t] = range();
+    $('printRange').textContent = (f ? 'من ' + f.toLocaleDateString('en-CA') : 'كل الفترات') + (t ? ' إلى ' + t.toLocaleDateString('en-CA') : '') + ' · v3.4';
+    icons();
+  }
+
+  let lastFb = [];
+  function renderComments(fb) {
+    lastFb = fb || lastFb;
+    const evMap = {}; DATA.events.forEach(e => evMap[e.id] = e);
+    const q = $('fbSearch').value.trim().toLowerCase(), rf = +$('fbRate').value;
+    const all = lastFb.filter(f => String(f.c || '').trim());
+    const list = all.filter(f => (!rf || +f.r === rf) &&
+      (!q || (f.c + ' ' + f.n + ' ' + ((evMap[f.e] || {}).name || '')).toLowerCase().includes(q)))
+      .sort((a, b) => String(b.t).localeCompare(a.t));
+    $('fbSub').textContent = nf(all.length) + ' مقترح مكتوب من أصل ' + nf(lastFb.length) + ' تقييم' + (list.length !== all.length ? ' — معروض ' + nf(list.length) : '');
+    $('fbList').innerHTML = list.length ? list.slice(0, 100).map(f =>
+      '<div class="fbi"><div class="h"><span><span class="rchip">' + esc(f.r) + '/5</span> <b>' + esc((evMap[f.e] || {}).name || f.e) + '</b></span>' +
+      '<span>' + esc(f.n) + ' · <span class="en">' + esc(String(f.t).replace('T', ' ').slice(0, 16)) + '</span></span></div>' +
+      '<div class="c">' + esc(f.c) + '</div></div>').join('') : empty();
+  }
+  $('fbSearch').oninput = () => renderComments();
+  $('fbRate').onchange = () => renderComments();
+  $('btnFbCsv').onclick = () => {
+    const evMap = {}; DATA.events.forEach(e => evMap[e.id] = e);
+    const rows = [['Event ID', 'Event', 'Name', 'Email', 'Rating (1-5)', 'Suggestion', 'Submitted']]
+      .concat(lastFb.map(f => [f.e, (evMap[f.e] || {}).name || '', f.n, f.m, f.r, f.c, String(f.t).replace('T', ' ')]));
+    download(rows, 'Event_Feedback_');
+  };
+  function download(rows, prefix) {
+    const csv = rows.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = prefix + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  }
+
+  function kpi(v, l, d) { return '<div class="kpi"><div class="v"><span dir="ltr">' + esc(v) + '</span></div><div class="l">' + esc(l) + '</div>' + (d ? '<div class="d">' + esc(d) + '</div>' : '') + '</div>'; }
+  function pct(a, b) { return Math.round(a / b * 100) + '%'; }
+  function empty() { return '<div class="empty-chart">لا توجد بيانات للفترة المحددة · No data</div>'; }
+  function fmtDate(s) {
+    const d = new Date(String(s || '').slice(0, 16));
+    return isNaN(d) ? (s || '—') : d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  function monthSpan(keys) {
+    if (!keys.length) return [];
+    keys.sort(); const out = []; let [y, m] = keys[0].split('-').map(Number); const [y2, m2] = keys[keys.length - 1].split('-').map(Number);
+    while (y < y2 || (y === y2 && m <= m2)) { out.push(y + '-' + String(m).padStart(2, '0')); if (++m > 12) { m = 1; y++; } if (out.length > 36) break; }
+    return out;
+  }
+  function columns(items) {
+    if (!items.length || !items.some(i => i.v)) return empty();
+    const max = Math.max(1, ...items.map(i => i.v));
+    const labelEvery = items.length > 14 ? 2 : 1;
+    return '<div class="cols">' + items.map(i =>
+      '<div class="col" data-tip="' + esc('<b>' + esc(i.tip) + '</b><br>' + nf(i.v)) + '">' +
+      (i.v ? '<span class="n">' + nf(i.v) + '</span>' : '') +
+      '<span class="b' + (i.v ? '' : ' zero') + '" style="height:' + (i.v / max * 82) + '%"></span></div>').join('') + '</div>' +
+      '<div class="xl">' + items.map((i, k) => '<span>' + (k % labelEvery ? '' : esc(i.l)) + '</span>').join('') + '</div>';
+  }
+
+  /* ---------- export ---------- */
+  $('btnCsv').onclick = () => {
+    const { evs, att, fb } = filtered();
+    const byEv = {}; att.forEach(a => byEv[a.e] = (byEv[a.e] || 0) + 1);
+    const fbEv = {}; fb.forEach(f => { const o = fbEv[f.e] || (fbEv[f.e] = { n: 0, s: 0 }); o.n++; o.s += +f.r; });
+    const rows = [['Event ID', 'Event', 'Start', 'Location', 'Status', 'Attendees', 'Responses', 'Avg satisfaction (1-5)']]
+      .concat(evs.map(e => [e.id, e.name, String(e.start).replace('T', ' '), e.location, e.status, byEv[e.id] || 0,
+        fbEv[e.id] ? fbEv[e.id].n : 0, fbEv[e.id] ? (fbEv[e.id].s / fbEv[e.id].n).toFixed(2) : '']));
+    const csv = rows.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = 'Events_Dashboard_' + new Date().toISOString().slice(0, 10) + '.csv'; a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  };
+  $('btnPrint').onclick = () => window.print();
+  $('btnRefresh').onclick = load;
+
+  /* ---------- filters ---------- */
+  $('fPeriod').onchange = () => { document.querySelectorAll('.cust').forEach(c => c.classList.toggle('hidden', $('fPeriod').value !== 'custom')); render(); };
+  ['fFrom', 'fTo', 'fStatus'].forEach(id => $(id).onchange = render);
+  $('fEvent').onchange = render;
+  $('auto').onchange = () => { clearInterval(timer); if ($('auto').checked) timer = setInterval(load, 60000); };
+
+  icons();
+  EA.auth.require(() => load());
+})();
+</script>
+</body>
+</html>

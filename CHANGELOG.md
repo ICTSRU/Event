@@ -1,5 +1,43 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v3.4 — 2026-10-12
+- Pre-configured for GitHub repository `melmahdy-2030/event`: `PUBLIC_PAGES_URL` = https://melmahdy-2030.github.io/event/ (QR codes and evaluation links work without a manual settings step).
+- README: GitHub upload must keep the `assets/` folder — the live repo had all files at the root, so `assets/…` (styles, scripts, logos, config) were not found.
+
+## v3.3 — 2026-10-12
+- **Applied SRU Secure Access Kit v1.4.** The admin console and dashboard now run inside Apps Script (`Admin.html`, `Dashboard.html`) and are limited to SRU Google accounts (@sr.edu.sa) on the **AllowedUsers** list. `OWNER_EMAILS` are always allowed.
+  - Every server call (`google.script.run.api`) re-checks the account. Not-listed and non-SRU accounts see the kit's `Denied` page.
+  - Every sign-in is logged to **AccessLog**: e-mail, date, time, day, result. 30-minute de-duplication; refused attempts logged; Sheet menu for summary and purge.
+  - Branded sign-in landing page on GitHub (`github/index.html`, kit design). `dashboard.html` on GitHub now redirects to it.
+- Replaces the v3.2 e-mail + password sign-in (`Users.gs` removed; delete it from the project). The shared admin key is gone.
+- The public JSON API (check-in, evaluation) is unchanged. Admin actions are refused on it.
+- «المستخدمون» (admins) now manages AllowedUsers: add an @sr.edu.sa account with an optional notification e-mail, change role, suspend or reactivate, and see the last sign-in.
+- «⚙ الإعدادات» (admins): visitor pages URL (QR codes), secure platform URL, landing URL — stored in Script Properties instead of the browser.
+- QR tab warns until the visitor pages URL is set.
+- Repository layout: `apps-script/` and `github/`.
+
+## v3.2 — 2026-10-12
+- **Sign-in with e-mail and password (رمز الدخول)** for the admin console and the dashboard — replaces the shared admin key, which is removed from `config.js` and from Script Properties.
+  - New `Users` sheet; passwords stored as salted, iterated SHA-256 hashes.
+  - Server-side sessions: end after 6 hours of inactivity or on «خروج»; «تذكرني» keeps the session on that device.
+  - 5 wrong attempts lock sign-in for 15 minutes.
+  - «نسيت رمز الدخول؟»: 6-digit code by e-mail (15 min, 5 tries); the current password keeps working until reset; same reply for unknown e-mails.
+  - First sign-in / admin reset forces choosing a personal password (min 8 characters, letters + digits).
+  - Roles: مسؤول النظام (admin — everything + user management) and منظم فعاليات (organizer).
+  - «المستخدمون» window (admins): add user (invitation e-mail with temporary password), change role, send new temporary password, disable/enable; cannot disable or demote yourself; at least one active admin is kept.
+- `setup()` creates the first admin (the deploying account) and e-mails a temporary password; `resetMyPassword()` recovers access from the editor.
+- Visitor pages (check-in, evaluation) are unchanged and need no sign-in.
+- Manifest adds `userinfo.email` scope.
+
+## v3.1 — 2026-10-12
+- Easier date & time selection in the event form (replaces the browser's English date-time fields):
+  - Arabic month calendar (Sunday-first, today outlined, Fridays marked, past days dimmed) with month navigation.
+  - Quick date buttons: اليوم / غدًا / بعد غد / بعد أسبوع.
+  - Start and end time dropdowns in 15-minute steps labelled ص/م, plus quick start buttons (8 ص … 1 م).
+  - Duration buttons (30 دقيقة … 4 ساعات) set the end time automatically; changing the start keeps the chosen duration (default 1 hour).
+  - Live Arabic summary, e.g. «الخميس، 15 أكتوبر 2026 — من 10:00 ص إلى 12:00 م (ساعتان)», with warnings for past dates or an end before the start.
+- Stored format unchanged (YYYY-MM-DDTHH:MM) — no Apps Script change needed. Existing off-grid times (e.g. 15:07) are kept when editing.
+
 ## v3.0 — 2026-10-11
 - Admin console now detects when the Apps Script backend runs older code than the pages and shows a red banner with the exact update steps (root cause of "agenda not shown": the server was still on pre-v2.9 code, so the Agenda column was never created or saved).
 - After saving an event with an agenda, a warning appears if the server did not store it.

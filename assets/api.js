@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v3.0)
+/* SRU Event Attendance & Management Platform — API client (v3.5)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -25,7 +25,12 @@
   // Safe to repeat: reads, and writes that are idempotent on the server (feedback is an upsert)
   const RETRY = ['getEvent', 'checkStatus', 'fbInfo', 'feedback', 'rate'];
   // Public actions sent by POST (body, not URL) — avoids privacy/ad-block filters that block URLs like "?action=feedback"
-  const PUBLIC_POST = ['rate'];
+  const PUBLIC_POST = ['rate', 'login', 'forgotPassword', 'resetWithCode'];
+
+  // Session token (v3.5): sessionStorage by default, localStorage when "remember me" is ticked
+  function token() {
+    try { return sessionStorage.getItem('ea_token') || localStorage.getItem('ea_token') || ''; } catch (e) { return ''; }
+  }
   const wait = ms => new Promise(r => setTimeout(r, ms));
 
   async function call(action, payload) {
@@ -45,7 +50,7 @@
   async function call1(action, payload, forceGet) {
     const isPublic = PUBLIC.indexOf(action) >= 0 || PUBLIC_POST.indexOf(action) >= 0;
     // never send the admin key from public (visitor) pages
-    const body = Object.assign({ action: action }, isPublic ? {} : { key: store('ea_admin_key') || cfg.ADMIN_KEY || '' }, payload || {});
+    const body = Object.assign({ action: action }, isPublic ? {} : { token: token() }, payload || {});
     if (isDemo()) return demo(action === 'rate' ? 'feedback' : action, body);
     let res;
     try {
@@ -68,7 +73,10 @@
     }
     let data;
     try { data = await res.json(); } catch (e) { throw new Error('Unexpected server response — check the Web App URL and access setting'); }
-    if (!data.ok) throw Object.assign(new Error(data.error || 'Request failed'), { data: data });
+    if (!data.ok) {
+      if (data.auth) { try { window.dispatchEvent(new CustomEvent('ea:unauth', { detail: data.error })); } catch (e) {} }
+      throw Object.assign(new Error(data.error || 'Request failed'), { data: data });
+    }
     return data;
   }
 
@@ -94,6 +102,10 @@
     const find = id => d.events.find(e => e.id === id);
     switch (action) {
       case 'verify': return Promise.resolve({ ok: true });
+      case 'me': case 'login': return Promise.resolve({ ok: true, token: 'demo', version: cfg.VERSION, user: { email: 'demo@sr.edu.sa', name: 'مستخدم تجريبي', role: 'admin', roleLabel: 'مسؤول النظام' } });
+      case 'logout': case 'changePassword': case 'forgotPassword': case 'resetWithCode': return Promise.resolve({ ok: true });
+      case 'listUsers': return Promise.resolve({ ok: true, roles: { admin: 'مسؤول النظام', organizer: 'منظم فعاليات' }, users: [{ email: 'demo@sr.edu.sa', name: 'مستخدم تجريبي', role: 'admin', roleLabel: 'مسؤول النظام', active: true, lastLogin: nowIso().replace('T', ' ') }] });
+      case 'saveUser': case 'resetUserPassword': case 'setUserActive': return Promise.resolve({ ok: true, demo: true });
       case 'quota': return Promise.resolve({ ok: true, remaining: 100 });
       case 'getEvent': {
         const e = find(b.id); return e ? Promise.resolve({ ok: true, event: e }) : fail('Event not found');
@@ -169,5 +181,5 @@
     return fail('Unknown action');
   }
 
-  window.EA = { call: call, isDemo: isDemo, apiUrl: apiUrl, cleanUrl: cleanUrl, store: store, cfg: cfg };
+  window.EA = { call: call, isDemo: isDemo, apiUrl: apiUrl, cleanUrl: cleanUrl, store: store, cfg: cfg, token: token };
 })();

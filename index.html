@@ -1,834 +1,152 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v3.0</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="version" content="3.5">
+<title>تسجيل الدخول</title>
+<link rel="icon" type="image/png" href="assets/logo-itoc.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/sru-theme.css">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script>
+  /* ▼▼▼ CONFIG — change per platform ▼▼▼ */
+  var CONFIG = {
+    WEB_APP_URL: "https://script.google.com/a/macros/sr.edu.sa/s/AKfycbz60Cf78S2Sr-kqqNytnZ51T4d-KA9jOjfLi05juL3gkk7K8-LDdbdSPSWmpkz78Y5x/exec",   // Apps Script deployment "Anyone within Sulaiman Al Rajhi University" (…/exec)
+    TITLE:       "الدخول إلى منصة تسجيل حضور وإدارة الفعاليات",
+    SUBTITLE:    "لوحة الإدارة ولوحة المؤشرات متاحة لمنسوبي جامعة سليمان الراجحي المصرّح لهم فقط",
+    LOGO:        "assets/logo-itoc.png",
+    VERSION:     "3.5",
+    KEY:         "events"                           // used for "skip next time"
+  };
+  /* ▲▲▲ CONFIG ▲▲▲ */
+  var WEB_APP_URL = CONFIG.WEB_APP_URL;
+
+  /* "Skip this screen next time" — per-browser preference; open with #login to show this screen again */
+  (function () {
+    try {
+      if (location.hash !== "#login" && localStorage.getItem(CONFIG.KEY + "_skip_intro") === "1" && /^https:\/\/script\.google\.com\//.test(WEB_APP_URL)) location.replace(WEB_APP_URL);
+    } catch (e) {}
+  })();
+</script>
 <style>
-  .layout{display:grid;grid-template-columns:320px 1fr;gap:16px;align-items:start}
-  @media(max-width:900px){.layout{grid-template-columns:1fr}}
-  .ev-list{display:flex;flex-direction:column;gap:8px;max-height:70vh;overflow:auto}
-  .ev-item{border:1px solid var(--border);border-radius:var(--radius);padding:10px;cursor:pointer;background:#fff;text-align:start;font:inherit;color:inherit;width:100%}
-  .ev-item:hover{border-color:var(--purple)}
-  .ev-item.active{border-color:var(--purple);background:var(--purple-light);box-shadow:inset -4px 0 0 var(--purple)}
-  .ev-item .t{font-weight:700;font-size:14.5px}
-  .ev-item .m{font-size:12.5px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
-  .ev-item .m svg{width:13px;height:13px;vertical-align:-2px}
-  .tabs{display:flex;gap:4px;border-bottom:2px solid var(--purple-light);margin:6px 0 16px;flex-wrap:wrap}
-  .tab{background:none;border:none;font:inherit;font-weight:600;color:var(--muted);padding:9px 14px;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;display:flex;align-items:center;gap:6px}
-  .tab.active{color:var(--purple);border-bottom-color:var(--purple)}
-  .tab svg{width:16px;height:16px}
-  .ev-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
-  .ev-head h2{margin:0;font-size:20px;color:var(--purple-dark)}
-  .meta{display:flex;gap:14px;flex-wrap:wrap;color:var(--muted);font-size:13.5px;margin-top:4px}
-  .meta svg{width:15px;height:15px;vertical-align:-3px}
-  .qr-box{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
-  #qr{background:#fff;padding:14px;border:1px solid var(--border);border-radius:var(--radius);width:fit-content}
-  #qr img,#qr canvas{display:block;width:240px;height:240px}
-  .link-row{display:flex;gap:6px;margin:8px 0}
-  .link-row input{direction:ltr;font-size:13px}
-  .actions{display:flex;gap:8px;flex-wrap:wrap}
-  .bars{display:flex;align-items:flex-end;gap:6px;height:150px;padding:8px 4px 0;border-bottom:1px solid var(--border);overflow-x:auto}
-  .bar{flex:1;min-width:26px;max-width:64px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%}
-  .bar .b{width:100%;background:var(--purple);border-radius:3px 3px 0 0;min-height:2px}
-  .bar .n{font-size:11px;font-weight:700;color:var(--purple-dark)}
-  .bar .h{font-size:11px;color:var(--muted);direction:ltr;margin-top:2px}
-  .preview{border:1px dashed var(--border);border-radius:var(--radius);padding:12px;background:#fcfbfe;white-space:pre-line}
-  .empty{text-align:center;padding:40px 10px;color:var(--muted)}
-  .empty svg{width:42px;height:42px;color:var(--purple);opacity:.6}
-  .toolbar{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
-  .toolbar input{max-width:280px}
-  .ag-head,.ag-row{display:grid;grid-template-columns:92px 92px 1fr 190px 98px;gap:6px;align-items:center}
-  .ag-head{font-size:12.5px;font-weight:700;color:var(--muted);padding:0 2px 4px}
-  .ag-row{margin-bottom:6px}
-  .ag-row input{padding:7px 8px}
-  .ag-row .ops{display:flex;gap:3px}
-  .ag-row .ops button{border:1px solid var(--border);background:#fff;border-radius:var(--radius);width:30px;height:34px;cursor:pointer;color:var(--purple);display:flex;align-items:center;justify-content:center}
-  .ag-row .ops button:hover{background:var(--purple-light)}
-  .ag-row .ops button.del{color:var(--err)}
-  .ag-row .ops svg{width:15px;height:15px}
-  .ag-empty{color:var(--muted);font-size:13px;padding:10px;border:1px dashed var(--border);border-radius:var(--radius);text-align:center;margin-bottom:8px}
-  @media(max-width:720px){
-    .ag-head{display:none}
-    .ag-row{grid-template-columns:1fr 1fr;border:1px solid var(--border);border-radius:var(--radius);padding:8px}
-    .ag-row .t,.ag-row .s{grid-column:1/-1}
-    .ag-row .ops{grid-column:1/-1;justify-content:flex-end}
-  }
-  .agenda-view{margin:12px 0 4px}
-  .agenda-view td.tm{white-space:nowrap;color:var(--purple-dark);font-weight:700;width:120px}
-  .print-head{display:none}
-  @media print{
-    .layout{display:block}
-    #sidebar,.tabs,.toolbar,.brand-band,.navbar,.diag,footer.foot{display:none!important}
-    .print-head{display:block;margin-bottom:12px;border-bottom:3px solid var(--purple);padding-bottom:8px}
-    .print-head img{height:46px}
-  }
+:root{
+  --purple:#501e8c; --purple-dark:#3a1464; --purple-light:#f0ebf8;
+  --blue:#0a6eaa; --teal:#0a8a96; --bg:#f7f5fb; --ink:#241436; --muted:#6b5a80;
+  --border:rgba(80,30,140,.12); --radius:4px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;flex-direction:column;min-height:100vh;background:var(--bg);color:var(--ink);font-family:"Cairo",Tahoma,Arial,sans-serif;line-height:1.6}
+.container{max-width:1100px;margin:0 auto;padding:0 16px;width:100%}
+
+/* Official header band: SRU right, ICTD left */
+.band{background:#fff;border-bottom:1px solid var(--border)}
+.band .container{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:10px;padding-bottom:10px}
+.band img{display:block;height:54px;width:auto;max-width:44vw;object-fit:contain}
+.band .ictd{height:60px}
+.bar{height:6px;background:linear-gradient(90deg,var(--purple-dark),var(--purple) 60%,var(--blue))}
+
+main{flex:1;display:grid;place-items:center;padding:32px 16px}
+.card{width:100%;max-width:460px;background:#fff;border:1px solid var(--border);border-top:4px solid var(--purple);border-radius:var(--radius);padding:28px 26px 22px;box-shadow:0 10px 30px rgba(58,20,100,.08);text-align:center}
+.card .logo{height:78px;width:auto;margin:0 auto 8px;display:block}
+h1{margin:6px 0 4px;font-size:1.45rem;color:var(--purple-dark);line-height:1.35}
+.sub{margin:0 0 18px;color:var(--muted);font-size:.95rem}
+
+.domain{display:flex;align-items:center;gap:10px;background:var(--purple-light);border:1px dashed rgba(80,30,140,.35);border-radius:var(--radius);padding:10px 12px;margin-bottom:18px;text-align:right}
+.domain svg{flex:none;width:22px;height:22px;color:var(--purple)}
+.domain b{font-family:Arial,sans-serif;direction:ltr;unicode-bidi:isolate;color:var(--purple-dark)}
+.domain span{font-size:.9rem}
+
+.btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--purple);color:#fff;text-decoration:none;font:700 1rem "Cairo",Tahoma,Arial,sans-serif;padding:12px 16px;border-radius:var(--radius);border:0;cursor:pointer;transition:background .15s}
+.btn:hover,.btn:focus-visible{background:var(--purple-dark);outline:none}
+.btn .g{width:22px;height:22px;background:#fff;border-radius:50%;display:grid;place-items:center;flex:none}
+.btn .g svg{width:15px;height:15px}
+
+.steps{list-style:none;margin:20px 0 4px;padding:0;text-align:right;font-size:.88rem;color:var(--muted)}
+.steps li{display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.steps .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--purple-light);color:var(--purple);font-weight:800;font-size:.78rem;display:grid;place-items:center;font-family:Arial,sans-serif}
+
+.skip{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px;font-size:.85rem;color:var(--muted);cursor:pointer;user-select:none}
+.skip input{accent-color:var(--purple);width:16px;height:16px}
+
+.en{margin-top:16px;padding-top:12px;border-top:1px solid var(--border);direction:ltr;font-size:.8rem;color:#8a7c9c;font-family:Arial,sans-serif}
+
+footer{background:var(--purple-dark);color:#e6dcf5;font-size:.82rem}
+footer .container{display:flex;flex-wrap:wrap;gap:6px 16px;justify-content:space-between;padding-top:12px;padding-bottom:12px}
+footer .ver{font-family:Arial,sans-serif;background:rgba(255,255,255,.12);padding:0 8px;border-radius:3px}
+
+@media (max-width:520px){
+  .band img{height:38px}.band .ictd{height:44px}
+  .card{padding:22px 18px 18px}
+  .card .logo{height:62px}
+  h1{font-size:1.25rem}
+}
 </style>
 </head>
 <body>
 
-<header class="brand-band no-print">
-  <div class="inner">
-    <span><img src="assets/logo-sru.png" alt="جامعة سليمان الراجحي" onerror="this.outerHTML='&lt;span class=fallback&gt;جامعة سليمان الراجحي&lt;br&gt;Sulaiman Al Rajhi University&lt;/span&gt;'"></span>
-    <span><img src="assets/logo-ictd.png" alt="ICTD" onerror="this.outerHTML='&lt;span class=fallback&gt;الإدارة التنفيذية للاتصالات وتقنية المعلومات&lt;br&gt;ICTD&lt;/span&gt;'"></span>
+<div class="band">
+  <div class="container">
+    <img src="assets/logo-sru.png" alt="جامعة سليمان الراجحي | Sulaiman Alrajhi University">
+    <img class="ictd" src="assets/logo-ictd.png" alt="الإدارة التنفيذية للاتصالات وتقنية المعلومات">
   </div>
-</header>
-<nav class="navbar no-print">
-  <div class="inner">
-    <div>
-      <h1>منصة تسجيل حضور وإدارة الفعاليات</h1>
-      <div class="sub en">Event Attendance &amp; Management Platform — Admin Console</div>
+</div>
+<div class="bar"></div>
+
+<main>
+  <div class="card">
+    <img class="logo" id="appLogo" src="assets/logo-itoc.png" alt="">
+    <h1 id="appTitle"></h1>
+    <p class="sub" id="appSub"></p>
+
+    <div class="domain">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+      <span>سجّل الدخول ببريدك الجامعي المنتهي بـ <b>@sr.edu.sa</b> وكلمة المرور الخاصة به.</span>
     </div>
-    <div class="actions" style="align-items:center">
-      <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v3.0</span>
-      <a class="btn secondary sm" href="dashboard.html"><i data-lucide="layout-dashboard"></i> لوحة المؤشرات</a>
-      <a class="btn secondary sm hidden" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
-      <button class="btn secondary sm hidden" id="btnSettings"><i data-lucide="settings"></i> الإعدادات</button>
-    </div>
-  </div>
-</nav>
-<div class="diag no-print"></div>
 
-<main class="container">
+    <a class="btn" id="go" href="#">
+      <span class="g" aria-hidden="true">
+        <svg viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.2C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.8c4.3-4 6.9-9.9 6.9-17.2z"/><path fill="#FBBC05" d="M10.6 28.5c-.5-1.4-.8-2.9-.8-4.5s.3-3.1.8-4.5l-7.9-6.2C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.4-5.8c-2.1 1.4-4.8 2.3-8.5 2.3-6.2 0-11.5-4.1-13.4-9.8l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
+      </span>
+      تسجيل الدخول بحساب الجامعة
+    </a>
 
-  <div id="verWarn" class="alert err hidden no-print"></div>
+    <ol class="steps">
+      <li><span class="n">1</span><span>اضغط الزر أعلاه، فتظهر صفحة تسجيل الدخول من Google.</span></li>
+      <li><span class="n">2</span><span>اختر حسابك الجامعي أو اكتبه (<b dir="ltr">name@sr.edu.sa</b>) ثم كلمة المرور.</span></li>
+      <li><span class="n">3</span><span>تُفتح المنصة مباشرة بعد التحقق.</span></li>
+    </ol>
 
-  <!-- Settings -->
-  <section id="settings" class="card hidden no-print">
-    <h2><i data-lucide="plug"></i> إعدادات الاتصال <span class="en muted small">Connection settings</span></h2>
-    <div class="grid g2">
-      <div>
-        <label class="f">رابط Web App <span class="en">Apps Script /exec URL</span></label>
-        <input id="setUrl" class="en" style="width:100%" placeholder="https://script.google.com/macros/s/.../exec">
-        <div class="small muted">اتركه فارغًا لاستخدام الرابط الافتراضي في <span class="en">config.js</span>. الصق الرابط فقط (يبدأ بـ <span class="en">https://</span> وينتهي بـ <span class="en">/exec</span>).</div>
-      </div>
-      <div>
-        <label class="f">مفتاح المسؤول <span class="en">Admin key</span></label>
-        <input id="setKey" type="password" class="en" style="width:100%" autocomplete="off">
-        <div class="small muted">يظهر في سجل التنفيذ بعد تشغيل <span class="en">setup()</span>.</div>
-      </div>
-      <div style="grid-column:1/-1">
-        <label class="f">رابط المنصة المنشور <span class="en">Public site URL (GitHub Pages) — used inside the QR code</span></label>
-        <input id="setPublic" class="en" style="width:100%" placeholder="https://ictsru.github.io/event-attendance/">
-        <div class="small muted">رابط المجلد الذي يحتوي <span class="en">checkin.html</span> على الإنترنت. بدونه يُبنى رمز QR من عنوان الصفحة الحالية، ولن يعمل على الجوال إذا فُتحت الصفحة من جهازك.</div>
-      </div>
-    </div>
-    <div id="setMsg"></div>
-    <div class="actions" style="margin-top:12px">
-      <button class="btn" id="btnSaveSettings"><i data-lucide="check"></i> حفظ والتحقق</button>
-      <button class="btn secondary" id="btnCloseSettings">إغلاق</button>
-    </div>
-  </section>
+    <label class="skip"><input type="checkbox" id="skip"> تخطَّ هذه الشاشة في المرات القادمة</label>
 
-  <div class="layout">
-    <!-- Sidebar -->
-    <aside id="sidebar" class="card no-print" style="padding:14px">
-      <div class="actions" style="justify-content:space-between;margin-bottom:10px">
-        <h2 style="margin:0"><i data-lucide="calendar-days"></i> الفعاليات</h2>
-        <button class="btn sm" id="btnNew"><i data-lucide="plus"></i> فعالية جديدة</button>
-      </div>
-      <input id="evSearch" placeholder="بحث… / Search" style="margin-bottom:10px">
-      <div style="margin-bottom:10px">
-        <select id="evFilter">
-          <option value="all">كل الفعاليات · All</option>
-          <option value="Open">مفتوحة · Open</option>
-          <option value="Closed">مغلقة · Closed</option>
-        </select>
-      </div>
-      <div id="evList" class="ev-list"><div class="empty"><span class="spinner dark"></span></div></div>
-      <button class="btn secondary sm" id="btnOverview" style="margin-top:10px;width:100%"><i data-lucide="layout-dashboard"></i> نظرة عامة · Overview</button>
-    </aside>
-
-    <!-- Main -->
-    <section id="main">
-
-      <!-- Overview -->
-      <div id="viewOverview">
-        <div class="kpis" id="ovKpis"></div>
-        <div class="card">
-          <h2><i data-lucide="bar-chart-3"></i> ملخص الحضور لجميع الفعاليات <span class="en muted small">All events summary</span></h2>
-          <div class="tbl-wrap"><table>
-            <thead><tr><th>الفعالية</th><th>المكان</th><th>التاريخ</th><th>الحالة</th><th>الحضور</th></tr></thead>
-            <tbody id="ovBody"></tbody>
-          </table></div>
-        </div>
-      </div>
-
-      <!-- Create / edit event -->
-      <div id="viewForm" class="card hidden">
-        <h2 id="formTitle"><i data-lucide="calendar-plus"></i> تسجيل فعالية جديدة <span class="en muted small">New event</span></h2>
-        <form id="evForm" class="grid" novalidate>
-          <input type="hidden" id="fId">
-          <div>
-            <label class="f">اسم الفعالية <span class="req">*</span> <span class="en">Event name</span></label>
-            <input id="fName" required maxlength="200">
-          </div>
-          <div class="grid g2">
-            <div>
-              <label class="f">المكان <span class="req">*</span> <span class="en">Location</span></label>
-              <input id="fLocation" required maxlength="200" placeholder="مثال: القاعة الرئيسية — المبنى A">
-            </div>
-            <div>
-              <label class="f">الجهة المنظمة <span class="en">Organizer</span></label>
-              <input id="fOrganizer" maxlength="120" value="الإدارة التنفيذية للاتصالات وتقنية المعلومات">
-            </div>
-          </div>
-          <div class="grid g2">
-            <div>
-              <label class="f">تاريخ ووقت البدء <span class="req">*</span> <span class="en">Start</span></label>
-              <input id="fStart" type="datetime-local" required>
-            </div>
-            <div>
-              <label class="f">تاريخ ووقت الانتهاء <span class="en">End</span></label>
-              <input id="fEnd" type="datetime-local">
-            </div>
-          </div>
-          <div>
-            <label class="f">وصف مختصر <span class="en">Description</span></label>
-            <textarea id="fDesc" maxlength="1000" style="min-height:80px"></textarea>
-          </div>
-          <div>
-            <label class="f" style="margin-bottom:8px">برنامج الفعالية <span class="en">Agenda (optional)</span></label>
-            <div class="ag-head"><span>من · From</span><span>إلى · To</span><span>الفقرة · Item</span><span>المقدّم · Presenter</span><span></span></div>
-            <div id="agRows"></div>
-            <button type="button" class="btn secondary sm" id="btnAddAg"><i data-lucide="plus"></i> إضافة فقرة · Add item</button>
-            <span class="small muted" style="margin-inline-start:8px">يُعرض البرنامج في صفحة التسجيل وبريد الشكر وملصق QR.</span>
-          </div>
-          <div id="formMsg"></div>
-          <div class="actions">
-            <button class="btn" type="submit" id="btnSaveEvent"><i data-lucide="save"></i> حفظ وإنشاء رمز QR</button>
-            <button class="btn secondary" type="button" id="btnCancelForm">إلغاء</button>
-          </div>
-        </form>
-      </div>
-
-      <!-- Event detail -->
-      <div id="viewEvent" class="card hidden">
-        <div class="print-head">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <img src="assets/logo-sru.png" alt="" onerror="this.remove()">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v3.0</div></div>
-            <img src="assets/logo-ictd.png" alt="" onerror="this.remove()">
-          </div>
-        </div>
-        <div class="ev-head">
-          <div>
-            <h2 id="dName"></h2>
-            <div class="meta" id="dMeta"></div>
-          </div>
-          <div class="actions no-print">
-            <span id="dStatus"></span>
-            <button class="btn secondary sm" id="btnToggle"></button>
-            <button class="btn secondary sm" id="btnEdit"><i data-lucide="pencil"></i> تعديل</button>
-          </div>
-        </div>
-
-        <div id="dAgenda"></div>
-        <div class="tabs no-print">
-          <button class="tab active" data-tab="qr"><i data-lucide="qr-code"></i> رمز QR</button>
-          <button class="tab" data-tab="report"><i data-lucide="clipboard-list"></i> تقرير الحضور</button>
-          <button class="tab" data-tab="email"><i data-lucide="mail"></i> مراسلة الحضور</button>
-          <button class="tab" data-tab="fb"><i data-lucide="star"></i> تقييم الفعالية</button>
-        </div>
-
-        <!-- QR tab -->
-        <div data-pane="qr">
-          <div class="qr-box">
-            <div id="qr"></div>
-            <div style="flex:1;min-width:260px">
-              <div id="qrWarn"></div>
-              <h3 style="margin-top:0">رابط تسجيل الحضور <span class="en muted small">Check-in link</span></h3>
-              <div class="link-row">
-                <input id="qrLink" readonly>
-                <button class="btn secondary sm" id="btnCopy" title="Copy"><i data-lucide="copy"></i></button>
-              </div>
-              <p class="small muted">يمسح الزائر الرمز، يُدخل اسمه وبريده، ويصله بريد شكر تلقائيًا. تُحفظ البيانات في Google Sheet.</p>
-              <div class="actions">
-                <button class="btn" id="btnDownloadQr"><i data-lucide="download"></i> تنزيل QR</button>
-                <button class="btn blue" id="btnPoster"><i data-lucide="printer"></i> طباعة ملصق</button>
-                <a class="btn secondary" id="btnOpenCheckin" target="_blank" rel="noopener"><i data-lucide="external-link"></i> فتح صفحة التسجيل</a>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Report tab -->
-        <div data-pane="report" class="hidden">
-          <div class="toolbar no-print">
-            <input id="attSearch" placeholder="بحث بالاسم أو البريد…">
-            <div class="actions">
-              <button class="btn secondary sm" id="btnRefresh"><i data-lucide="refresh-cw"></i> تحديث</button>
-              <button class="btn secondary sm" id="btnCsv"><i data-lucide="file-spreadsheet"></i> Excel / CSV</button>
-              <button class="btn sm" id="btnPrint"><i data-lucide="printer"></i> طباعة / PDF</button>
-            </div>
-          </div>
-          <div id="repBody"></div>
-        </div>
-
-        <!-- Email tab -->
-        <div data-pane="fb" class="hidden">
-          <div class="kpis" id="fbKpis"></div>
-          <div class="grid g2" style="align-items:start">
-            <div>
-              <h3 style="margin-top:0">نموذج التقييم <span class="en muted small">What attendees receive</span></h3>
-              <div class="preview" style="white-space:normal">
-                <b>1. ما مدى رضاك العام عن الفعالية؟</b><div class="small muted en">Overall satisfaction — 5-point Likert scale</div>
-                <div style="display:flex;gap:4px;margin:8px 0;direction:ltr">
-                  <span class="chip closed">1 غير راضٍ إطلاقًا</span><span class="chip closed">2</span><span class="chip closed">3 محايد</span><span class="chip closed">4</span><span class="chip open">5 راضٍ جدًا</span>
-                </div>
-                <b>2. ما مقترحاتك لتحسين الفعاليات القادمة؟</b><div class="small muted en">Open question — suggestions</div>
-              </div>
-              <p class="small muted">يصل لكل مشارك رابط شخصي آمن، ويُحفظ رده في ورقة <span class="en">Feedback</span>، ويظهر في لوحة المؤشرات. من سبق أن قيّم لا تصله الرسالة مرة أخرى.</p>
-            </div>
-            <div>
-              <h3 style="margin-top:0">إرسال طلب التقييم <span class="en muted small">Send evaluation request</span></h3>
-              <div id="fbInfo" class="alert info"></div>
-              <div id="fbMsg"></div>
-              <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
-                <input id="fbTestTo" type="email" class="en" style="flex:1;min-width:200px" placeholder="name@sr.edu.sa" aria-label="Test e-mail address">
-                <button class="btn secondary" id="btnTestFb"><i data-lucide="mail-check"></i> إرسال نسخة تجريبية لي</button>
-              </div>
-              <div class="actions">
-                <button class="btn" id="btnSendFb"><i data-lucide="send"></i> إرسال طلب التقييم للحضور</button>
-                <a class="btn secondary" href="dashboard.html"><i data-lucide="layout-dashboard"></i> عرض النتائج</a>
-              </div>
-              <p class="small muted" style="margin-top:10px"><i data-lucide="zap" style="width:14px;height:14px;vertical-align:-2px"></i> للإرسال التلقائي بعد انتهاء كل فعالية: شغّل الدالة <span class="en">installFeedbackTrigger</span> مرة واحدة من محرر Apps Script.</p>
-            </div>
-          </div>
-        </div>
-
-        <div data-pane="email" class="hidden">
-          <div class="alert info" id="mailInfo"></div>
-          <div class="grid">
-            <div>
-              <label class="f">الموضوع <span class="en">Subject</span></label>
-              <input id="mSubject" maxlength="200">
-            </div>
-            <div>
-              <label class="f">نص الرسالة <span class="en">Message</span></label>
-              <textarea id="mBody" style="min-height:170px"></textarea>
-              <div class="small muted">متغيرات متاحة: <span class="en">{name} {event} {date} {location}</span> — تُستبدل لكل مستلم.</div>
-            </div>
-            <div>
-              <label class="f">معاينة <span class="en">Preview (first attendee)</span></label>
-              <div class="preview" id="mPreview"></div>
-            </div>
-            <div id="mailMsg"></div>
-            <div class="actions">
-              <button class="btn" id="btnSendAll"><i data-lucide="send"></i> إرسال لجميع الحضور</button>
-              <button class="btn secondary" id="btnTpl"><i data-lucide="file-text"></i> قالب شكر بعد الفعالية</button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </section>
+    <div class="en">Sign in with your Sulaiman Al Rajhi University Google account (@sr.edu.sa).<br>Your password is entered on Google's page only.</div>
   </div>
 </main>
 
-<footer class="foot no-print">
-  <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v3.0</span></span>
-    <a id="itocLink" href="#" target="_blank" rel="noopener"><img src="assets/logo-itoc.png" alt="ITOC — IT Operations Center" onerror="this.outerHTML='ITOC'"></a>
+<footer>
+  <div class="container">
+    <div>مركز العمليات التقنية <b dir="ltr">ITOC</b> — الإدارة التنفيذية للاتصالات وتقنية المعلومات — جامعة سليمان الراجحي © 2026</div>
+    <div>الإصدار <span class="ver" dir="ltr" id="appVer"></span></div>
   </div>
 </footer>
 
-<div class="toast" id="toast"></div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-<script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
-<script src="assets/config.js"></script>
-<script src="assets/api.js"></script>
 <script>
-(function () {
-  const $ = id => document.getElementById(id);
-  const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const icons = () => { try { lucide.createIcons(); } catch (e) {} };
-
-  let events = [];
-  let current = null;      // selected event
-  let attendees = [];
-  let quota = null;
-
-  /* ---------- helpers ---------- */
-  function toast(msg) {
-    const t = $('toast'); t.textContent = msg; t.classList.add('show');
-    clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3200);
-  }
-  function msg(el, type, text) { $(el).innerHTML = text ? '<div class="alert ' + type + '">' + esc(text) + '</div>' : ''; }
-  function fmt(s) {
-    if (!s) return '—';
-    const d = new Date(String(s).slice(0, 19));
-    if (isNaN(d)) return s;
-    return d.toLocaleString('ar-SA-u-ca-gregory-nu-latn', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-  }
-  function timeOnly(s) { return String(s || '').slice(11, 16); }
-  function busy(btn, on) {
-    if (on) { btn._html = btn.innerHTML; btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>'; }
-    else { btn.disabled = false; if (btn._html) btn.innerHTML = btn._html; icons(); }
-  }
-  function publicBase() { return (EA.store('ea_public_url') || EA.cfg.PUBLIC_URL || '').trim(); }
-  function isReachable(u) { return /^https?:\/\//i.test(u) && !/\/\/(localhost|127\.|10\.|192\.168\.|0\.0\.0\.0)/i.test(u); }
-  function checkinUrl(id) {
-    let pb = publicBase();
-    if (pb && !/\.html?$/i.test(pb) && !pb.endsWith('/')) pb += '/';
-    const base = pb && /\.html?$/i.test(pb) ? new URL(pb) : new URL(EA.cfg.CHECKIN_PAGE || 'checkin.html', pb || location.href);
-    base.searchParams.set('e', id);
-    return base.href;
-  }
-  function feedbackUrl() {
-    const u = new URL(checkinUrl('x'));
-    return u.href.replace(/checkin\.html.*$/i, 'feedback.html');
-  }
-
-  /* ---------- evaluation ---------- */
-  async function loadFb() {
-    if (!current) return;
-    $('fbKpis').innerHTML = '<div class="kpi"><span class="spinner dark"></span></div>';
-    try {
-      const r = await EA.call('feedbackStatus', { id: current.id });
-      const rate = r.attendees ? Math.round(r.responses / r.attendees * 100) : 0;
-      $('fbKpis').innerHTML = kpi(r.responses, 'عدد الردود · Responses') + kpi(r.attendees ? rate + '%' : '—', 'نسبة الاستجابة · Response rate') +
-        kpi(r.responses ? r.average.toFixed(2) + ' / 5' : '—', 'متوسط الرضا · Avg satisfaction');
-      const pending = Math.max(0, r.attendees - r.responses);
-      $('fbInfo').innerHTML = (r.sentAt ? 'آخر إرسال: <span class="en">' + esc(String(r.sentAt).replace('T', ' ').slice(0, 16)) + '</span> · ' : 'لم يُرسل طلب التقييم بعد · ') +
-        'سيُرسل إلى <b>' + pending + '</b> مشارك لم يقيّموا بعد.' + (EA.isDemo() ? ' <b>(تجريبي — لن تُرسل رسائل)</b>' : '');
-      $('btnSendFb').disabled = !pending;
-    } catch (e) {
-      $('fbKpis').innerHTML = '';
-      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v3.0 وانشر نسخة جديدة.' : '');
-    }
-  }
-  $('fbTestTo').value = EA.store('ea_test_email') || EA.cfg.TEST_EMAIL || '';
-  $('btnTestFb').onclick = async (ev) => {
-    const to = $('fbTestTo').value.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(to)) { msg('fbMsg', 'err', 'أدخل بريدًا صحيحًا لاستلام النسخة التجريبية.'); return; }
-    const url = feedbackUrl();
-    if (!/^https:\/\//i.test(url) && !EA.isDemo()) { msg('fbMsg', 'err', 'رابط صفحة التقييم ليس منشورًا (https). افتح لوحة الإدارة من GitHub Pages.'); return; }
-    const b = ev.currentTarget; busy(b, true); msg('fbMsg');
-    try {
-      await EA.call('testFeedback', { id: current.id, to: to, pageUrl: url });
-      EA.store('ea_test_email', to !== (EA.cfg.TEST_EMAIL || '') ? to : null);
-      msg('fbMsg', 'ok', (EA.isDemo() ? '[تجريبي] ' : '') + 'أُرسلت نسخة تجريبية إلى ' + to + ' — روابطها تفتح صفحة التقييم في وضع المعاينة ولا يُحفظ الرد.');
-    } catch (e) { msg('fbMsg', 'err', e.message); }
-    busy(b, false);
-  };
-
-  $('btnSendFb').onclick = async (ev) => {
-    const url = feedbackUrl();
-    if (!/^https:\/\//i.test(url) && !EA.isDemo()) { msg('fbMsg', 'err', 'رابط صفحة التقييم ليس منشورًا (https). افتح لوحة الإدارة من GitHub Pages أو اضبط رابط المنصة المنشور في الإعدادات.'); return; }
-    if (!confirm('إرسال طلب التقييم للمشاركين الذين لم يقيّموا بعد؟\nSend the evaluation request?')) return;
-    const b = ev.currentTarget; busy(b, true); msg('fbMsg');
-    try {
-      const r = await EA.call('sendFeedback', { id: current.id, pageUrl: url });
-      msg('fbMsg', r.failed || r.skipped ? 'warn' : 'ok', (r.demo ? '[تجريبي] ' : '') + 'تم إرسال ' + r.sent + ' من ' + r.recipients +
-        (r.failed ? ' · فشل: ' + r.failed : '') + (r.skipped ? ' · مؤجل لتجاوز الحصة: ' + r.skipped : ''));
-      loadFb();
-    } catch (e) { msg('fbMsg', 'err', e.message); }
-    busy(b, false);
-  };
-
-  function show(view) {
-    ['viewOverview', 'viewForm', 'viewEvent'].forEach(v => $(v).classList.toggle('hidden', v !== view));
-  }
-  function statusChip(s) {
-    return s === 'Open' ? '<span class="chip open">● مفتوحة · Open</span>' : '<span class="chip closed">مغلقة · Closed</span>';
-  }
-
-  /* ---------- settings ---------- */
-  function openSettings() {
-    $('setUrl').value = EA.apiUrl();
-    $('setKey').value = EA.store('ea_admin_key') || EA.cfg.ADMIN_KEY || '';
-    $('setPublic').value = publicBase();
-    $('settings').classList.remove('hidden');
-  }
-  $('btnSettings').onclick = openSettings;
-  $('btnCloseSettings').onclick = () => $('settings').classList.add('hidden');
-  $('btnSaveSettings').onclick = async (ev) => {
-    const b = ev.currentTarget;
-    const raw = $('setUrl').value.trim();
-    const clean = EA.cleanUrl(raw);
-    if (raw && !clean) { msg('setMsg', 'err', 'رابط غير صالح — يجب أن يبدأ بـ https://script.google.com/ وينتهي بـ /exec'); return; }
-    $('setUrl').value = clean;
-    const pub = $('setPublic').value.trim();
-    if (pub && !/^https:\/\/[^\s]+$/i.test(pub)) { msg('setMsg', 'err', 'رابط المنصة المنشور يجب أن يبدأ بـ https://'); return; }
-    EA.store('ea_public_url', pub && pub !== (EA.cfg.PUBLIC_URL || '') ? pub : null);
-    // Store only if it differs from the default in config.js
-    EA.store('ea_api_url', clean && clean !== EA.cleanUrl(EA.cfg.API_URL) ? clean : null);
-    const k = $('setKey').value.trim();
-    EA.store('ea_admin_key', k && k !== (EA.cfg.ADMIN_KEY || '') ? k : null);
-    busy(b, true);
-    try {
-      const v = await EA.call('verify');
-      msg('setMsg', 'ok', EA.isDemo() ? 'الوضع التجريبي مفعّل.' : 'تم الاتصال والتحقق من المفتاح بنجاح — مرتبط بالملف: ' + (v.sheet || ''));
-      refreshMode(); await loadEvents();
-      setTimeout(() => $('settings').classList.add('hidden'), 900);
-    } catch (e) { msg('setMsg', 'err', e.message); }
-    busy(b, false);
-  };
-  function refreshMode() { $('demoChip').classList.toggle('hidden', !EA.isDemo()); }
-
-  /* ---------- backend version check ---------- */
-  // Warns when Apps Script still runs older code than these pages (new features would silently not save)
-  function checkBackendVersion(v) {
-    const want = String(EA.cfg.VERSION || ''), have = String(v || '');
-    const older = !have || (parseFloat(have) < parseFloat(want));
-    $('verWarn').classList.toggle('hidden', !older || EA.isDemo());
-    if (older && !EA.isDemo()) $('verWarn').innerHTML =
-      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v3.0') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
-      'بعض الميزات الجديدة لن تُحفظ حتى تحدّث الخادم: استبدل ملفات <span class="en">Code.gs / Feedback.gs / EmailAssets.gs</span> في محرر Apps Script، ثم <span class="en">Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy</span>.';
-  }
-
-  /* ---------- events list ---------- */
-  async function loadEvents(selectId) {
-    try {
-      const r = await EA.call('listEvents');
-      events = r.events || []; quota = r.quota;
-      checkBackendVersion(r.version);
-      renderList(); renderOverview();
-      if (selectId) selectEvent(selectId);
-      else if (current) { const c = events.find(e => e.id === current.id); if (c) { current = c; renderHead(); } }
-    } catch (e) {
-      $('evList').innerHTML = '<div class="alert err">' + esc(e.message) + '</div>';
-      if (/Unauthorized/i.test(e.message)) openSettings();
-    }
-  }
-  function renderList() {
-    const q = $('evSearch').value.trim().toLowerCase();
-    const f = $('evFilter').value;
-    const list = events.filter(e => (f === 'all' || e.status === f) &&
-      (!q || (e.name + ' ' + e.location + ' ' + e.id).toLowerCase().includes(q)));
-    if (!list.length) {
-      $('evList').innerHTML = '<div class="empty"><i data-lucide="calendar-x"></i><div>لا توجد فعاليات</div><div class="small en">No events yet</div></div>';
-    } else {
-      $('evList').innerHTML = list.map(e =>
-        '<button class="ev-item' + (current && current.id === e.id ? ' active' : '') + '" data-id="' + esc(e.id) + '">' +
-        '<div class="t">' + esc(e.name) + '</div>' +
-        '<div class="m"><span><i data-lucide="calendar"></i> ' + esc(fmt(e.start)) + '</span>' +
-        '<span><i data-lucide="users"></i> ' + e.attendees + '</span>' +
-        (e.status === 'Open' ? '<span style="color:var(--ok)">● Open</span>' : '<span>Closed</span>') + '</div></button>').join('');
-    }
-    icons();
-  }
-  $('evSearch').oninput = renderList;
-  $('evFilter').onchange = renderList;
-  $('evList').onclick = (ev) => { const b = ev.target.closest('.ev-item'); if (b) selectEvent(b.dataset.id); };
-
-  function renderOverview() {
-    const total = events.reduce((s, e) => s + (+e.attendees || 0), 0);
-    const open = events.filter(e => e.status === 'Open').length;
-    const avg = events.length ? Math.round(total / events.length) : 0;
-    $('ovKpis').innerHTML =
-      kpi(events.length, 'إجمالي الفعاليات · Events') + kpi(open, 'مفتوحة للتسجيل · Open') +
-      kpi(total, 'إجمالي الحضور · Attendees') + kpi(avg, 'متوسط الحضور · Avg / event');
-    $('ovBody').innerHTML = events.length ? events.map(e =>
-      '<tr style="cursor:pointer" data-id="' + esc(e.id) + '"><td><b>' + esc(e.name) + '</b><div class="small muted en">' + esc(e.id) + '</div></td>' +
-      '<td>' + esc(e.location) + '</td><td>' + esc(fmt(e.start)) + '</td><td>' + statusChip(e.status) + '</td><td><b>' + e.attendees + '</b></td></tr>').join('')
-      : '<tr><td colspan="5" class="empty">ابدأ بإنشاء فعالية جديدة · Create your first event</td></tr>';
-  }
-  $('ovBody').onclick = (ev) => { const r = ev.target.closest('tr[data-id]'); if (r) selectEvent(r.dataset.id); };
-  function kpi(v, l) { return '<div class="kpi"><div class="v"><span dir="ltr">' + esc(v) + '</span></div><div class="l">' + esc(l) + '</div></div>'; }
-  $('btnOverview').onclick = () => { current = null; renderList(); show('viewOverview'); };
-
-  /* ---------- create / edit ---------- */
-  function openForm(e) {
-    $('fId').value = e ? e.id : '';
-    $('fName').value = e ? e.name : '';
-    $('fLocation').value = e ? e.location : '';
-    $('fOrganizer').value = e ? (e.organizer || '') : 'الإدارة التنفيذية للاتصالات وتقنية المعلومات';
-    $('fStart').value = e ? String(e.start).slice(0, 16) : '';
-    $('fEnd').value = e ? String(e.end || '').slice(0, 16) : '';
-    $('fDesc').value = e ? (e.description || '') : '';
-    agenda = e && Array.isArray(e.agenda) ? e.agenda.map(a => Object.assign({}, a)) : [];
-    renderAgendaRows();
-    $('formTitle').innerHTML = e
-      ? '<i data-lucide="pencil"></i> تعديل الفعالية <span class="en muted small">Edit event</span>'
-      : '<i data-lucide="calendar-plus"></i> تسجيل فعالية جديدة <span class="en muted small">New event</span>';
-    msg('formMsg'); show('viewForm'); icons(); $('fName').focus();
-  }
-  $('btnNew').onclick = () => openForm(null);
-  $('btnEdit').onclick = () => openForm(current);
-  $('btnCancelForm').onclick = () => current ? show('viewEvent') : show('viewOverview');
-
-  $('evForm').onsubmit = async (ev) => {
-    ev.preventDefault();
-    const data = {
-      id: $('fId').value, name: $('fName').value.trim(), location: $('fLocation').value.trim(),
-      organizer: $('fOrganizer').value.trim(), start: $('fStart').value, end: $('fEnd').value,
-      description: $('fDesc').value.trim(),
-      agenda: readAgenda().filter(a => a.title)
-    };
-    const badTime = data.agenda.find(a => a.from && a.to && a.to < a.from);
-    if (badTime) return msg('formMsg', 'err', 'في البرنامج: وقت نهاية الفقرة «' + badTime.title + '» قبل وقت بدايتها.');
-    if (!data.name || !data.location || !data.start) return msg('formMsg', 'err', 'يرجى تعبئة الحقول الإلزامية (الاسم، المكان، وقت البدء).');
-    if (data.end && data.end < data.start) return msg('formMsg', 'err', 'وقت الانتهاء يجب أن يكون بعد وقت البدء.');
-    const b = $('btnSaveEvent'); busy(b, true);
-    try {
-      const r = await EA.call(data.id ? 'updateEvent' : 'createEvent', { event: data });
-      toast(data.id ? 'تم تحديث الفعالية' : 'تم إنشاء الفعالية ورمز QR');
-      await loadEvents(r.id);
-      const saved = events.find(e => e.id === r.id);
-      if (data.agenda.length && saved && !(saved.agenda || []).length)
-        toast('⚠️ حُفظت الفعالية لكن البرنامج لم يُحفظ — حدّث Code.gs على الخادم (انظر التنبيه أعلى الصفحة)');
-    } catch (e) { msg('formMsg', 'err', e.message); }
-    busy(b, false);
-  };
-
-  /* ---------- event detail ---------- */
-  function selectEvent(id) {
-    current = events.find(e => e.id === id);
-    if (!current) return;
-    attendees = [];
-    renderList(); renderHead(); show('viewEvent'); setTab('qr');
-    renderQr();
-    loadAttendance();
-  }
-  /* ---------- agenda editor ---------- */
-  let agenda = [];
-  function readAgenda() {
-    return [...document.querySelectorAll('#agRows .ag-row')].map(r => ({
-      from: r.querySelector('.f1').value, to: r.querySelector('.f2').value,
-      title: r.querySelector('.t').value.trim(), speaker: r.querySelector('.s').value.trim()
-    }));
-  }
-  function renderAgendaRows(focusIdx) {
-    $('agRows').innerHTML = agenda.length ? agenda.map((a, i) =>
-      '<div class="ag-row" data-i="' + i + '">' +
-      '<input type="time" class="f1" value="' + esc(a.from || '') + '" aria-label="From">' +
-      '<input type="time" class="f2" value="' + esc(a.to || '') + '" aria-label="To">' +
-      '<input class="t" maxlength="200" placeholder="عنوان الفقرة — مثال: كلمة افتتاحية" value="' + esc(a.title || '') + '" aria-label="Item">' +
-      '<input class="s" maxlength="120" placeholder="اسم المقدّم (اختياري)" value="' + esc(a.speaker || '') + '" aria-label="Presenter">' +
-      '<span class="ops">' +
-      '<button type="button" data-op="up" title="أعلى" ' + (i === 0 ? 'disabled style="opacity:.35"' : '') + '><i data-lucide="arrow-up"></i></button>' +
-      '<button type="button" data-op="down" title="أسفل" ' + (i === agenda.length - 1 ? 'disabled style="opacity:.35"' : '') + '><i data-lucide="arrow-down"></i></button>' +
-      '<button type="button" data-op="del" class="del" title="حذف"><i data-lucide="trash-2"></i></button></span></div>').join('')
-      : '<div class="ag-empty">لا توجد فقرات بعد — اضغط «إضافة فقرة» لبناء برنامج الفعالية سطرًا بسطر.</div>';
-    icons();
-    if (focusIdx != null) { const r = document.querySelectorAll('#agRows .ag-row')[focusIdx]; if (r) r.querySelector(r.querySelector('.f1').value ? '.t' : '.f1').focus(); }
-  }
-  $('btnAddAg').onclick = () => {
-    agenda = readAgenda();
-    if (agenda.length >= 40) return msg('formMsg', 'err', 'الحد الأقصى 40 فقرة.');
-    const last = agenda[agenda.length - 1];
-    let from = last && last.to ? last.to : '';
-    if (!from && !last && $('fStart').value) from = $('fStart').value.slice(11, 16);   // first item starts with the event
-    agenda.push({ from: from, to: '', title: '', speaker: '' });
-    renderAgendaRows(agenda.length - 1);
-  };
-  $('agRows').onclick = (ev) => {
-    const b = ev.target.closest('button[data-op]'); if (!b) return;
-    agenda = readAgenda();
-    const i = +b.closest('.ag-row').dataset.i, op = b.dataset.op;
-    if (op === 'del') agenda.splice(i, 1);
-    if (op === 'up' && i > 0) [agenda[i - 1], agenda[i]] = [agenda[i], agenda[i - 1]];
-    if (op === 'down' && i < agenda.length - 1) [agenda[i + 1], agenda[i]] = [agenda[i], agenda[i + 1]];
-    renderAgendaRows();
-  };
-  // Enter in the last field adds the next item
-  $('agRows').addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter' && ev.target.matches('.s, .t')) { ev.preventDefault(); $('btnAddAg').click(); }
+  var go = document.getElementById("go"), skip = document.getElementById("skip");
+  if (!/^https:\/\/script\.google\.com\//.test(WEB_APP_URL)) {
+    go.removeAttribute("href"); go.style.opacity = ".6"; go.style.cursor = "not-allowed";
+    go.insertAdjacentHTML("afterend", '<p style="color:#b3261e;font-size:.85rem;margin:8px 0 0">لم يُضبط رابط المنصة بعد — ضع رابط النشر الآمن في CONFIG.WEB_APP_URL داخل index.html.</p>');
+  } else go.href = WEB_APP_URL;
+  document.title = CONFIG.TITLE + " | SRU";
+  document.getElementById("appTitle").textContent = CONFIG.TITLE;
+  document.getElementById("appSub").textContent = CONFIG.SUBTITLE;
+  document.getElementById("appLogo").src = CONFIG.LOGO;
+  document.getElementById("appVer").textContent = "v" + CONFIG.VERSION;
+  var SKIP_KEY = CONFIG.KEY + "_skip_intro";
+  try { skip.checked = localStorage.getItem(SKIP_KEY) === "1"; } catch (e) {}
+  skip.addEventListener("change", function () {
+    try { skip.checked ? localStorage.setItem(SKIP_KEY, "1") : localStorage.removeItem(SKIP_KEY); } catch (e) {}
   });
-  // time range for RTL pages: start on the right, each time isolated
-  function agTime(a) { return a.from ? '<span dir="ltr">' + esc(a.from) + '</span>' + (a.to ? ' – <span dir="ltr">' + esc(a.to) + '</span>' : '') : '—'; }
-  function agendaTable(list) {
-    if (!list || !list.length) return '';
-    return '<div class="agenda-view"><h3 style="margin:0 0 8px">برنامج الفعالية <span class="en muted small">Agenda</span></h3>' +
-      '<div class="tbl-wrap"><table><thead><tr><th>الوقت</th><th>الفقرة</th><th>المقدّم</th></tr></thead><tbody>' +
-      list.map(a => '<tr><td class="tm">' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td class="muted">' + esc(a.speaker || '') + '</td></tr>').join('') +
-      '</tbody></table></div></div>';
-  }
-
-  function renderHead() {
-    const e = current;
-    $('dName').textContent = e.name;
-    $('dMeta').innerHTML =
-      '<span><i data-lucide="map-pin"></i> ' + esc(e.location) + '</span>' +
-      '<span><i data-lucide="clock"></i> ' + esc(fmt(e.start)) + (e.end ? ' → ' + esc(timeOnly(e.end)) : '') + '</span>' +
-      (e.organizer ? '<span><i data-lucide="building-2"></i> ' + esc(e.organizer) + '</span>' : '') +
-      '<span class="en"><i data-lucide="hash"></i> ' + esc(e.id) + '</span>';
-    $('dAgenda').innerHTML = agendaTable(e.agenda);
-    $('dStatus').innerHTML = statusChip(e.status);
-    $('btnToggle').innerHTML = e.status === 'Open'
-      ? '<i data-lucide="lock"></i> إغلاق التسجيل' : '<i data-lucide="unlock"></i> فتح التسجيل';
-    icons();
-  }
-  $('btnToggle').onclick = async (ev) => {
-    const b = ev.currentTarget, next = current.status === 'Open' ? 'Closed' : 'Open';
-    busy(b, true);
-    try { await EA.call('setStatus', { id: current.id, status: next }); toast(next === 'Open' ? 'تم فتح التسجيل' : 'تم إغلاق التسجيل'); await loadEvents(); }
-    catch (e) { toast(e.message); }
-    busy(b, false); renderHead();
-  };
-
-  document.querySelectorAll('.tab').forEach(t => t.onclick = () => setTab(t.dataset.tab));
-  function setTab(name) {
-    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
-    document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== name));
-    if (name === 'email') renderMail();
-    if (name === 'fb') loadFb();
-  }
-
-  /* ---------- QR ---------- */
-  function renderQr() {
-    const url = checkinUrl(current.id);
-    $('qrLink').value = url;
-    $('btnOpenCheckin').href = url;
-    $('qrWarn').innerHTML = isReachable(url) ? '' :
-      '<div class="alert err"><b>هذا الرابط لا يعمل على الجوال.</b> الصفحة مفتوحة من جهازك (<span class="en">' + esc(url.split('?')[0].slice(0, 60)) + '…</span>). ' +
-      'ارفع المجلد إلى GitHub Pages ثم ضع رابطه في <b>الإعدادات ← رابط المنصة المنشور</b>، أو افتح لوحة الإدارة من رابط GitHub Pages مباشرة.</div>';
-    $('qr').innerHTML = '';
-    new QRCode($('qr'), { text: url, width: 480, height: 480, colorDark: '#241436', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
-  }
-  function qrDataUrl() {
-    const c = $('qr').querySelector('canvas');
-    if (c) return c.toDataURL('image/png');
-    const i = $('qr').querySelector('img'); return i ? i.src : '';
-  }
-  $('btnCopy').onclick = async () => {
-    try { await navigator.clipboard.writeText($('qrLink').value); toast('تم نسخ الرابط'); }
-    catch (e) { $('qrLink').select(); document.execCommand('copy'); toast('تم نسخ الرابط'); }
-  };
-  $('btnDownloadQr').onclick = () => {
-    const a = document.createElement('a');
-    a.href = qrDataUrl(); a.download = 'QR_' + current.id + '.png'; a.click();
-  };
-  $('btnPoster').onclick = () => {
-    const e = current, w = window.open('', '_blank');
-    if (!w) return toast('اسمح بالنوافذ المنبثقة للطباعة');
-    const logo = (f) => new URL('assets/' + f, location.href).href;
-    w.document.write('<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>QR — ' + esc(e.name) + '</title>' +
-      '<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet"><style>' +
-      '@page{size:A4;margin:14mm}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{font-family:Cairo,Tahoma,Arial;margin:0;color:#241436;text-align:center}' +
-      '.band{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:4px solid #501e8c}.band img{height:60px}' +
-      'h1{color:#501e8c;font-size:34px;margin:28px 0 6px}.m{font-size:18px;color:#6b5a80}.qr{margin:26px auto;padding:16px;border:3px solid #501e8c;border-radius:8px;width:fit-content}.qr img{width:330px;height:330px;display:block}' +
-      'table.ag{margin:22px auto 0;border-collapse:collapse;width:88%;font-size:14px;text-align:right}table.ag th{background:#f0ebf8;color:#3a1464;padding:6px 10px}table.ag td{padding:6px 10px;border-bottom:1px solid #eee}table.ag td:first-child{white-space:nowrap;color:#501e8c;font-weight:700;text-align:right}' +
-      '.qr img{width:' + (((e.agenda || []).length > 5) ? '260px;height:260px' : '330px;height:330px') + '!important}' +
-      '.cta{background:#501e8c;color:#fff;display:inline-block;padding:10px 26px;border-radius:4px;font-size:22px;font-weight:700}.en{direction:ltr;font-size:16px;color:#6b5a80;margin-top:6px}.f{margin-top:30px;font-size:12px;color:#6b5a80}' +
-      '</style></head><body><div class="band"><img src="' + logo('logo-ictd.png') + '" onerror="this.style.visibility=\'hidden\'"><img src="' + logo('logo-sru.png') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
-      '<h1>' + esc(e.name) + '</h1><div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
-      '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
-      ((e.agenda || []).length ? '<table class="ag"><tr><th>الوقت</th><th>البرنامج</th><th>المقدّم</th></tr>' + e.agenda.slice(0, 10).map(a =>
-        '<tr><td>' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td>' + esc(a.speaker || '') + '</td></tr>').join('') + '</table>' : '') +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v3.0</div>' +
-      '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
-    w.document.close();
-  };
-
-  /* ---------- report ---------- */
-  async function loadAttendance() {
-    $('repBody').innerHTML = '<div class="empty"><span class="spinner dark"></span></div>';
-    try {
-      const r = await EA.call('getAttendance', { id: current.id });
-      attendees = (r.attendees || []).sort((a, b) => String(a.time).localeCompare(b.time));
-      renderReport(); renderMail();
-    } catch (e) { $('repBody').innerHTML = '<div class="alert err">' + esc(e.message) + '</div>'; }
-  }
-  $('btnRefresh').onclick = async (ev) => { const b = ev.currentTarget; busy(b, true); await loadEvents(); await loadAttendance(); busy(b, false); };
-  $('attSearch').oninput = renderReport;
-
-  function renderReport() {
-    const n = attendees.length;
-    const sent = attendees.filter(a => a.thankYou === 'Yes').length;
-    const byHour = {};
-    attendees.forEach(a => { const h = String(a.time).slice(11, 13); if (h) byHour[h] = (byHour[h] || 0) + 1; });
-    const hours = Object.keys(byHour).sort();
-    const max = Math.max(1, ...Object.values(byHour));
-    const peak = hours.reduce((p, h) => byHour[h] > (byHour[p] || 0) ? h : p, hours[0]);
-    const q = $('attSearch').value.trim().toLowerCase();
-    const rows = attendees.filter(a => !q || (a.name + ' ' + a.email).toLowerCase().includes(q));
-
-    $('repBody').innerHTML =
-      '<div class="kpis">' +
-      kpi(n, 'إجمالي الحضور · Attendees') +
-      kpi(n ? timeOnly(attendees[0].time) : '—', 'أول تسجيل · First check-in') +
-      kpi(n ? timeOnly(attendees[n - 1].time) : '—', 'آخر تسجيل · Last check-in') +
-      kpi(peak ? peak + ':00' : '—', 'ساعة الذروة · Peak hour') +
-      kpi(n ? Math.round(sent / n * 100) + '%' : '—', 'رسائل الشكر المرسلة · Thank-you sent') +
-      '</div>' +
-      (hours.length ? '<h3>توزيع التسجيل حسب الساعة <span class="en muted small">Check-ins by hour</span></h3><div class="bars">' +
-        hours.map(h => '<div class="bar"><div class="n">' + byHour[h] + '</div><div class="b" style="height:' + Math.round(byHour[h] / max * 100) + '%"></div><div class="h">' + h + ':00</div></div>').join('') +
-        '</div>' : '') +
-      '<h3>قائمة الحضور <span class="en muted small">Attendance list (' + rows.length + ')</span></h3>' +
-      '<div class="tbl-wrap"><table><thead><tr><th>#</th><th>الاسم · Name</th><th>البريد · Email</th><th>وقت التسجيل · Time</th><th class="no-print">رسالة الشكر</th></tr></thead><tbody>' +
-      (rows.length ? rows.map((a, i) => '<tr><td>' + (i + 1) + '</td><td>' + esc(a.name) + '</td><td><span class="en">' + esc(a.email) + '</span></td><td><span class="en">' + esc(String(a.time).replace('T', ' ').slice(0, 16)) + '</span></td><td class="no-print">' +
-        (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
-        : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
-      '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v3.0</p>';
-  }
-
-  $('btnCsv').onclick = () => {
-    const head = ['#', 'Event ID', 'Event', 'Location', 'Name', 'Email', 'Check-in time', 'Thank-you sent'];
-    const lines = [head].concat(attendees.map((a, i) => [i + 1, current.id, current.name, current.location, a.name, a.email, String(a.time).replace('T', ' '), a.thankYou]));
-    const csv = lines.map(r => r.map(v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"').join(',')).join('\r\n');
-    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob); a.download = 'Attendance_' + current.id + '.csv'; a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
-  };
-  $('btnPrint').onclick = () => { setTab('report'); setTimeout(() => window.print(), 100); };
-
-  /* ---------- e-mail ---------- */
-  const TPL_SUBJECT = 'شكرًا لمشاركتكم في {event}';
-  const TPL_BODY = 'عزيزي/عزيزتي {name}،\n\nنشكر لكم حضوركم ومشاركتكم في {event} الذي أُقيم في {location} بتاريخ {date}.\nنأمل أن تكون الفعالية قد حققت الفائدة المرجوة، ونتطلع لرؤيتكم في فعالياتنا القادمة.\n\nمع خالص التحية،\nالإدارة التنفيذية للاتصالات وتقنية المعلومات\nجامعة سليمان الراجحي';
-  function uniqueCount() { return new Set(attendees.map(a => String(a.email).toLowerCase())).size; }
-  function renderMail() {
-    if (!current) return;
-    const n = uniqueCount();
-    $('mailInfo').innerHTML = 'سيتم الإرسال إلى <b>' + n + '</b> مستلم (بريد فريد) — رسالة منفصلة لكل شخص.' +
-      (quota != null ? ' · رصيد الإرسال اليومي المتبقي: <b>' + esc(quota) + '</b>' : '') +
-      (EA.isDemo() ? ' · <b>الوضع التجريبي: لن تُرسل رسائل فعلية.</b>' : '');
-    $('btnSendAll').disabled = !n;
-    preview();
-  }
-  function fill(t, a) {
-    return String(t).replace(/\{name\}/g, a ? a.name : 'اسم المشارك').replace(/\{event\}/g, current.name)
-      .replace(/\{location\}/g, current.location).replace(/\{date\}/g, arDate(current.start));
-  }
-  function arDate(v) {
-    const d = new Date(String(v || '').slice(0, 16));
-    if (isNaN(d)) return v || '';
-    const days = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
-    const months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
-    let h = d.getHours(); const ap = h < 12 ? 'ص' : 'م'; h = h % 12 || 12;
-    return days[d.getDay()] + '، ' + d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear() + ' في ' + String(h).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ' ' + ap;
-  }
-  function preview() {
-    const a = attendees[0];
-    $('mPreview').innerHTML = '<b>' + esc(fill($('mSubject').value, a)) + '</b>\n\n' + esc(fill($('mBody').value, a));
-  }
-  $('mSubject').oninput = preview; $('mBody').oninput = preview;
-  $('btnTpl').onclick = () => { $('mSubject').value = TPL_SUBJECT; $('mBody').value = TPL_BODY; preview(); };
-  $('btnSendAll').onclick = async (ev) => {
-    const subject = $('mSubject').value.trim(), body = $('mBody').value.trim();
-    if (!subject || !body) return msg('mailMsg', 'err', 'يرجى كتابة الموضوع ونص الرسالة.');
-    const n = uniqueCount();
-    if (!confirm('تأكيد إرسال الرسالة إلى ' + n + ' مستلم؟\nSend to ' + n + ' recipients?')) return;
-    const b = ev.currentTarget; busy(b, true); msg('mailMsg');
-    try {
-      const r = await EA.call('sendBulk', { id: current.id, subject: subject, message: body });
-      quota = r.remaining;
-      msg('mailMsg', r.failed || r.skipped ? 'warn' : 'ok',
-        (r.demo ? '[تجريبي] ' : '') + 'تم الإرسال: ' + r.sent + ' من ' + r.recipients +
-        (r.failed ? ' · فشل: ' + r.failed : '') + (r.skipped ? ' · مؤجل لتجاوز الحصة اليومية: ' + r.skipped : ''));
-      renderMail();
-    } catch (e) { msg('mailMsg', 'err', e.message); }
-    busy(b, false);
-  };
-
-  /* ---------- init ---------- */
-  $('itocLink').href = EA.cfg.ITOC_URL || '#';
-  if (EA.cfg.SHEET_URL) $('btnSheet').href = EA.cfg.SHEET_URL;
-  // Header buttons are hidden; settings remain reachable via index.html#settings (and open automatically on a key/connection error)
-  if (location.hash === '#settings') openSettings();
-  refreshMode(); icons();
-  if (!EA.isDemo() && !EA.store('ea_admin_key') && !EA.cfg.ADMIN_KEY) openSettings();
-  loadEvents();
-})();
 </script>
 </body>
 </html>

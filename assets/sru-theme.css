@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — shared theme (v3.0) — tokens from SRU_IDENTITY.md */
+/* SRU Event Attendance & Management Platform — shared theme (v3.5) — tokens from SRU_IDENTITY.md */
 :root{
   --purple:#501e8c; --purple-dark:#3a1464; --purple-light:#f0ebf8;
   --blue:#0a6eaa; --blue-light:#e6f3fa;
@@ -97,3 +97,37 @@ footer.foot img{height:34px}
   @page{size:A4;margin:16mm}
   *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
 }
+
+/* ---------- Sign-in & user management (v3.5) ---------- */
+body.ea-locked{overflow:hidden}
+.ea-login{position:fixed;inset:0;z-index:200;background:var(--bg);overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:32px 16px}
+.ea-login-card{width:100%;max-width:420px;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 10px 30px rgba(58,20,100,.10);overflow:hidden}
+.ea-login-logos{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;gap:10px}
+.ea-login-logos img{height:40px;max-width:46%;object-fit:contain}
+.ea-login-band{background:var(--purple);color:#fff;padding:14px 18px}
+.ea-login-band .t{font-weight:700;font-size:17px}
+.ea-login-band .s{font-size:12px;opacity:.85;display:block}
+.ea-login-body{padding:18px}
+.ea-login-body h2{margin:0 0 14px;font-size:17px;color:var(--purple-dark)}
+.ea-login-foot{border-top:1px solid var(--border);padding:10px 18px;font-size:12px;color:var(--muted);text-align:center}
+.ea-full{width:100%;padding:11px;font-size:15px;margin-top:14px}
+.ea-link{background:none;border:none;font:inherit;font-size:13px;color:var(--blue);cursor:pointer;margin-top:10px;padding:4px 0;display:block;width:100%;text-align:center}
+.ea-link:hover{text-decoration:underline}
+.ea-check{display:flex;align-items:center;gap:8px;font-size:13.5px;margin-top:12px;cursor:pointer}
+.ea-check input{width:auto}
+.ea-pw{position:relative}
+.ea-pw input{padding-inline-end:40px}
+.ea-eye{position:absolute;inset-inline-end:4px;top:50%;transform:translateY(-50%);border:none;background:none;color:var(--muted);cursor:pointer;padding:6px;display:flex}
+.ea-eye svg{width:17px;height:17px}
+.ea-code{font-size:22px;letter-spacing:8px;text-align:center;width:100%}
+.ea-user{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:#fff;background:rgba(255,255,255,.14);border-radius:var(--radius);padding:4px 9px;max-width:260px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ea-user svg{width:15px;height:15px}
+.ea-role{font-size:11px;opacity:.8}
+.ea-modal{position:fixed;inset:0;z-index:150;background:rgba(36,20,54,.45);display:flex;align-items:flex-start;justify-content:center;padding:40px 12px;overflow:auto}
+.ea-modal-card{background:#fff;border-radius:var(--radius);width:100%;max-width:760px;padding:16px 18px;box-shadow:0 12px 40px rgba(0,0,0,.2)}
+.ea-modal-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.ea-modal-hd b{color:var(--purple-dark);font-size:16px;display:flex;align-items:center;gap:6px}
+.ea-modal-hd svg{width:18px;height:18px}
+.ea-x{border:none;background:none;font-size:18px;cursor:pointer;color:var(--muted)}
+.ea-add{display:grid;grid-template-columns:1.4fr 1fr 150px auto;gap:6px;margin-bottom:8px}
+@media(max-width:640px){.ea-add{grid-template-columns:1fr}.ea-user .ea-role{display:none}}

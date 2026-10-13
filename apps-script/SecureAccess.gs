@@ -1,6 +1,6 @@
 /**
  * =====================================================================
- *  SRU Secure Access Kit v1.4 — applied to the Event Attendance & Management Platform (v3.7)
+ *  SRU Secure Access Kit v1.4 — applied to the Event Attendance & Management Platform (v4.1)
  *  Access: Sulaiman Al Rajhi University Google accounts (@sr.edu.sa) on the AllowedUsers list
  *  ICTD — ITOC
  * ---------------------------------------------------------------------

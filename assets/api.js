@@ -1,4 +1,4 @@
-/* SRU Event Attendance & Management Platform — API client (v3.5)
+/* SRU Event Attendance & Management Platform — API client (v4.1)
  * Talks to the Apps Script Web App. If no API URL is configured, a local
  * DEMO backend (localStorage) is used so the UI can be tried immediately.
  */
@@ -27,7 +27,7 @@
   // Public actions sent by POST (body, not URL) — avoids privacy/ad-block filters that block URLs like "?action=feedback"
   const PUBLIC_POST = ['rate', 'login', 'forgotPassword', 'resetWithCode'];
 
-  // Session token (v3.5): sessionStorage by default, localStorage when "remember me" is ticked
+  // Session token (v4.1): sessionStorage by default, localStorage when "remember me" is ticked
   function token() {
     try { return sessionStorage.getItem('ea_token') || localStorage.getItem('ea_token') || ''; } catch (e) { return ''; }
   }

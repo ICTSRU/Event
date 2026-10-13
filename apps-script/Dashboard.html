@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>لوحة مؤشرات الفعاليات والحضور | Events Dashboard — v3.7</title>
+<title>لوحة مؤشرات الفعاليات والحضور | Events Dashboard — v4.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <?!= include('Styles') ?>
@@ -84,7 +84,7 @@
     <div class="actions" style="align-items:center">
       <span id="authBox" class="actions no-print" style="align-items:center"></span>
       <label class="switch no-print"><input type="checkbox" id="auto"> تحديث تلقائي كل دقيقة</label>
-      <span class="ver en">v3.7</span>
+      <span class="ver en">v4.1</span>
       <button class="btn secondary sm" id="btnRefresh"><i data-lucide="refresh-cw"></i> تحديث</button>
       <button class="btn secondary sm" id="btnCsv"><i data-lucide="file-spreadsheet"></i> Excel</button>
       <button class="btn secondary sm" id="btnPrint"><i data-lucide="printer"></i> طباعة / PDF</button>
@@ -214,7 +214,7 @@
 
 <footer class="foot">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Events Dashboard v3.7</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Events Dashboard v4.1</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img data-logo="itoc" alt="ITOC — IT Operations Center"></a>
   </div>
 </footer>
@@ -263,7 +263,7 @@
       render();
     } catch (e) {
       $('err').innerHTML = '<div class="alert err">' + esc(e.message) +
-        (/Unknown action/i.test(e.message) ? ' — حدّث Code.gs إلى v3.7 وانشر نسخة جديدة (New version).' : '') + '</div>';
+        (/Unknown action/i.test(e.message) ? ' — حدّث Code.gs إلى v4.1 وانشر نسخة جديدة (New version).' : '') + '</div>';
     }
     b.disabled = false;
   }
@@ -417,7 +417,7 @@
       : '<tr><td colspan="5" class="empty-chart">لا يوجد حضور متكرر بعد</td></tr>';
 
     const [f, t] = range();
-    $('printRange').textContent = (f ? 'من ' + f.toLocaleDateString('en-CA') : 'كل الفترات') + (t ? ' إلى ' + t.toLocaleDateString('en-CA') : '') + ' · v3.7';
+    $('printRange').textContent = (f ? 'من ' + f.toLocaleDateString('en-CA') : 'كل الفترات') + (t ? ' إلى ' + t.toLocaleDateString('en-CA') : '') + ' · v4.1';
     icons();
   }
 

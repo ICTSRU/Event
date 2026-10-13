@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v3.7</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v4.1</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <?!= include('Styles') ?>
@@ -28,6 +28,27 @@
   .qr-box{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
   #qr{background:#fff;padding:14px;border:1px solid var(--border);border-radius:var(--radius);width:fit-content}
   #qr img,#qr canvas{display:block;width:240px;height:240px}
+  .dynq{display:flex;gap:10px;align-items:flex-start;background:var(--purple-light);border:1px solid #d6c7ea;border-radius:var(--radius);padding:10px 12px;cursor:pointer}
+  .dynq{display:block;cursor:default}
+  .seg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 6px}
+  .seg button{font:inherit;font-size:13.5px;font-weight:600;border:1px solid #d6c7ea;background:#fff;color:var(--purple-dark);border-radius:var(--radius);padding:6px 14px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--purple);border-color:var(--purple);color:#fff}
+  .live-badge{display:inline-flex;align-items:center;gap:6px;background:#e8f6ee;color:#1a7a43;border-radius:20px;padding:3px 10px;font-size:12.5px;font-weight:700}
+  .live-badge::before{content:'';width:8px;height:8px;border-radius:50%;background:#1a9a52;animation:blink 1s infinite}
+  @keyframes blink{50%{opacity:.25}}
+  .qr-timer{height:6px;background:#eee8f5;border-radius:3px;overflow:hidden;margin-top:8px;width:268px}
+  .qr-timer i{display:block;height:100%;background:var(--purple);width:100%;transition:width 1s linear}
+  #present{position:fixed;inset:0;z-index:999;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:96px 20px 20px;text-align:center;overflow:auto}
+  #present>*{flex:none}
+  #present .pband{position:absolute;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:14px 28px;border-bottom:4px solid var(--purple)}
+  #present .pband img{height:56px}
+  #present h1{margin:0;line-height:1.3;color:var(--purple);font-size:clamp(24px,3.4vw,44px)}
+  #present .pm{color:var(--muted);font-size:clamp(14px,1.6vw,20px)}
+  #pQr{padding:16px;border:4px solid var(--purple);border-radius:10px;background:#fff}
+  #pQr img,#pQr canvas{display:block;width:min(calc(100vh - 390px),70vw);height:min(calc(100vh - 390px),70vw);min-width:220px;min-height:220px}
+  #present .qr-timer{width:min(calc(100vh - 390px),70vw);min-width:220px;height:10px;margin:0}
+  #present .cta{background:var(--purple);color:#fff;padding:8px 26px;border-radius:4px;font-size:clamp(18px,2vw,26px);font-weight:700}
+  #present .pclose{position:absolute;bottom:16px;inset-inline-start:16px}
   .link-row{display:flex;gap:6px;margin:8px 0}
   .link-row input{direction:ltr;font-size:13px}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -107,7 +128,7 @@
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v3.7</span>
+      <span class="ver en">v4.1</span>
       <span id="authBox" class="actions" style="align-items:center"></span>
       <a class="btn secondary sm" href="#" data-page="dashboard"><i data-lucide="layout-dashboard"></i> لوحة المؤشرات</a>
       <a class="btn secondary sm hidden" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
@@ -175,7 +196,7 @@
               <input id="fOrganizer" maxlength="120" value="الإدارة التنفيذية للاتصالات وتقنية المعلومات">
             </div>
           </div>
-          <!-- Date & time picker (v3.7) — values are written to the hidden fStart / fEnd as YYYY-MM-DDTHH:MM -->
+          <!-- Date & time picker (v3.1) — values are written to the hidden fStart / fEnd as YYYY-MM-DDTHH:MM -->
           <input type="hidden" id="fStart"><input type="hidden" id="fEnd">
           <div class="dt">
             <div class="dt-cal">
@@ -218,6 +239,28 @@
             <button type="button" class="btn secondary sm" id="btnAddAg"><i data-lucide="plus"></i> إضافة فقرة · Add item</button>
             <span class="small muted" style="margin-inline-start:8px">يُعرض البرنامج في صفحة التسجيل وبريد الشكر وملصق QR.</span>
           </div>
+          <div class="dynq">
+            <b>إغلاق التسجيل تلقائيًا</b> <span class="en muted small">Auto-close registration</span>
+            <div class="seg" id="acMode" role="radiogroup">
+              <button type="button" data-v="">بدون · Off</button>
+              <button type="button" data-v="0">عند انتهاء الفعالية</button>
+              <button type="button" data-v="15">بعد 15 دقيقة</button>
+              <button type="button" data-v="30">بعد 30 دقيقة</button>
+              <button type="button" data-v="60">بعد ساعة</button>
+              <button type="button" data-v="120">بعد ساعتين</button>
+            </div>
+            <div class="small muted" id="acHelp"></div>
+          </div>
+          <div class="dynq">
+            <b>رمز QR</b> <span class="en muted small">QR code mode</span>
+            <div class="seg" id="qrMode" role="radiogroup">
+              <button type="button" data-v="0">ثابت · Static</button>
+              <button type="button" data-v="30">كل 30 ثانية</button>
+              <button type="button" data-v="60">كل 60 ثانية</button>
+              <button type="button" data-v="120">كل 120 ثانية</button>
+            </div>
+            <div class="small muted" id="qrModeHelp"></div>
+          </div>
           <div id="formMsg"></div>
           <div class="actions">
             <button class="btn" type="submit" id="btnSaveEvent"><i data-lucide="save"></i> حفظ وإنشاء رمز QR</button>
@@ -231,7 +274,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img data-logo="sru" alt="">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v3.7</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v4.1</div></div>
             <img data-logo="ictd" alt="">
           </div>
         </div>
@@ -258,16 +301,18 @@
         <!-- QR tab -->
         <div data-pane="qr">
           <div class="qr-box">
-            <div id="qr"></div>
+            <div><div id="qr"></div><div class="qr-timer hidden" id="qrTimer"><i></i></div></div>
             <div style="flex:1;min-width:260px">
+              <div id="qrLive" class="hidden" style="margin-bottom:10px"><span class="live-badge">رمز متغيّر · يتجدد خلال <span id="qrSec" dir="ltr">60</span> ث</span></div>
               <div id="qrWarn"></div>
               <h3 style="margin-top:0">رابط تسجيل الحضور <span class="en muted small">Check-in link</span></h3>
               <div class="link-row">
                 <input id="qrLink" readonly>
                 <button class="btn secondary sm" id="btnCopy" title="Copy"><i data-lucide="copy"></i></button>
               </div>
-              <p class="small muted">يمسح الزائر الرمز، يُدخل اسمه وبريده، ويصله بريد شكر تلقائيًا. تُحفظ البيانات في Google Sheet.</p>
+              <p class="small muted" id="qrHelp">يمسح الزائر الرمز، يُدخل اسمه وبريده، ويصله بريد شكر تلقائيًا. تُحفظ البيانات في Google Sheet.</p>
               <div class="actions">
+                <button class="btn hidden" id="btnPresent"><i data-lucide="monitor"></i> عرض على الشاشة · ملء الشاشة</button>
                 <button class="btn" id="btnDownloadQr"><i data-lucide="download"></i> تنزيل QR</button>
                 <button class="btn blue" id="btnPoster"><i data-lucide="printer"></i> طباعة ملصق</button>
                 <a class="btn secondary" id="btnOpenCheckin" target="_blank" rel="noopener"><i data-lucide="external-link"></i> فتح صفحة التسجيل</a>
@@ -352,13 +397,23 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v3.7</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v4.1</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img data-logo="itoc" alt="ITOC — IT Operations Center"></a>
   </div>
 </footer>
 
 <div class="toast" id="toast"></div>
 
+<div id="present" class="hidden" role="dialog" aria-label="Live QR">
+  <div class="pband"><img data-logo="ictd" alt="ICTD"><img data-logo="sru" alt="SRU"></div>
+  <h1 id="pName"></h1>
+  <div class="pm" id="pMeta"></div>
+  <div id="pQr"></div>
+  <div class="qr-timer"><i id="pBar"></i></div>
+  <div class="cta">امسح الرمز لتسجيل حضورك · <span class="en" style="color:#fff">Scan to check in</span></div>
+  <div class="pm">يتجدد الرمز كل <span id="pStep">60</span> ثانية · <span dir="ltr" id="pSec">60</span></div>
+  <button class="btn secondary sm pclose" id="btnPresentClose">✕ إغلاق (Esc)</button>
+</div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 <script>window.EA_SERVER = <?!= serverJson ?>;</script>
@@ -421,7 +476,7 @@
       $('btnSendFb').disabled = !pending;
     } catch (e) {
       $('fbKpis').innerHTML = '';
-      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v3.7 وانشر نسخة جديدة.' : '');
+      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v4.1 وانشر نسخة جديدة.' : '');
     }
   }
   $('fbTestTo').value = EA.store('ea_test_email') || EA.cfg.TEST_EMAIL || '';
@@ -472,7 +527,7 @@
     const older = !have || (parseFloat(have) < parseFloat(want));
     $('verWarn').classList.toggle('hidden', !older || EA.isDemo());
     if (older && !EA.isDemo()) $('verWarn').innerHTML =
-      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v3.7') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
+      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v4.1') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
       'بعض الميزات الجديدة لن تُحفظ حتى تحدّث الخادم: استبدل ملفات <span class="en">Code.gs / Feedback.gs / EmailAssets.gs</span> في محرر Apps Script، ثم <span class="en">Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy</span>.';
   }
 
@@ -535,12 +590,46 @@
     setPicker(e ? String(e.start).slice(0, 16).replace(' ', 'T') : '', e ? String(e.end || '').slice(0, 16).replace(' ', 'T') : '');
     $('fDesc').value = e ? (e.description || '') : '';
     agenda = e && Array.isArray(e.agenda) ? e.agenda.map(a => Object.assign({}, a)) : [];
+    setQrMode(e && e.dynamicQr ? (e.qrStep || 60) : 0);
+    setAc(e ? (e.autoCloseMin == null ? '' : e.autoCloseMin) : 30);   // new events: 30 minutes after the end
     renderAgendaRows();
     $('formTitle').innerHTML = e
       ? '<i data-lucide="pencil"></i> تعديل الفعالية <span class="en muted small">Edit event</span>'
       : '<i data-lucide="calendar-plus"></i> تسجيل فعالية جديدة <span class="en muted small">New event</span>';
     msg('formMsg'); show('viewForm'); icons(); $('fName').focus();
   }
+  /* Auto-close selector (v4.1): '' = off, 0 = at the end, N = minutes after the end */
+  let acSel = '';
+  function acLabel(m) { return m === 0 ? 'عند انتهاء الفعالية' : m === 60 ? 'بعد ساعة من انتهائها' : m === 120 ? 'بعد ساعتين من انتهائها' : 'بعد ' + m + ' دقيقة من انتهائها'; }
+  function acTime() {
+    if (acSel === '') return '';
+    const base = $('fEnd').value || $('fStart').value;
+    if (!base) return '';
+    const d = new Date(base.slice(0, 16)); if (isNaN(d)) return '';
+    d.setMinutes(d.getMinutes() + acSel);
+    return d.toLocaleString('ar-SA-u-ca-gregory-nu-latn', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit' });
+  }
+  function setAc(v) {
+    acSel = v === '' || v == null || isNaN(+v) ? '' : +v;
+    document.querySelectorAll('#acMode button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(acSel))));
+    const t = acTime();
+    $('acHelp').innerHTML = acSel === ''
+      ? 'يبقى التسجيل مفتوحًا حتى تغلقه يدويًا.'
+      : 'يُغلق التسجيل ' + acLabel(acSel) + (t ? ' — <b>' + esc(t) + '</b>' : '') + ($('fEnd').value ? '' : ' (لا يوجد وقت انتهاء، فيُحسب من وقت البدء)') + '. يمكنك إعادة فتحه يدويًا في أي وقت.';
+  }
+  $('acMode').onclick = (ev) => { const b = ev.target.closest('button[data-v]'); if (b) setAc(b.dataset.v); };
+
+  /* QR mode selector (v4.0): 0 = static, 30 / 60 / 120 s = dynamic */
+  let qrStepSel = 0;
+  function graceText(n) { return n === 30 ? 'دقيقة ونصف' : n === 60 ? 'دقيقتين' : '4 دقائق'; }
+  function setQrMode(n) {
+    qrStepSel = [30, 60, 120].indexOf(+n) >= 0 ? +n : 0;
+    document.querySelectorAll('#qrMode button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === qrStepSel)));
+    $('qrModeHelp').innerHTML = qrStepSel
+      ? 'يُعرض الرمز على شاشة القاعة ويتجدد كل <b>' + qrStepSel + ' ثانية</b>؛ لا يعمل الرمز المصوَّر أو الرابط المُرسل لشخص خارج القاعة بعد ' + graceText(qrStepSel) + '. لا يصلح للملصقات المطبوعة.'
+      : 'رمز واحد لا يتغيّر — مناسب للملصقات المطبوعة والتنزيل.';
+  }
+  $('qrMode').onclick = (ev) => { const b = ev.target.closest('button[data-v]'); if (b) setQrMode(b.dataset.v); };
   $('btnNew').onclick = () => openForm(null);
   $('btnEdit').onclick = () => openForm(current);
   $('btnCancelForm').onclick = () => current ? show('viewEvent') : show('viewOverview');
@@ -551,7 +640,9 @@
       id: $('fId').value, name: $('fName').value.trim(), location: $('fLocation').value.trim(),
       organizer: $('fOrganizer').value.trim(), start: $('fStart').value, end: $('fEnd').value,
       description: $('fDesc').value.trim(),
-      agenda: readAgenda().filter(a => a.title)
+      agenda: readAgenda().filter(a => a.title),
+      qrStep: qrStepSel, dynamicQr: qrStepSel > 0,
+      autoCloseMin: acSel
     };
     const badTime = data.agenda.find(a => a.from && a.to && a.to < a.from);
     if (badTime) return msg('formMsg', 'err', 'في البرنامج: وقت نهاية الفقرة «' + badTime.title + '» قبل وقت بدايتها.');
@@ -566,6 +657,10 @@
       const saved = events.find(e => e.id === r.id);
       if (data.agenda.length && saved && !(saved.agenda || []).length)
         toast('⚠️ حُفظت الفعالية لكن البرنامج لم يُحفظ — حدّث Code.gs على الخادم (انظر التنبيه أعلى الصفحة)');
+      else if (saved && (data.qrStep || 0) !== (saved.dynamicQr ? (saved.qrStep || 0) : 0))
+        toast('⚠️ لم تُحفظ مدة تجدد رمز QR — حدّث Code.gs إلى v4.1 وانشر نسخة جديدة');
+      else if (saved && String(saved.autoCloseMin == null ? '' : saved.autoCloseMin) !== String(data.autoCloseMin))
+        toast('⚠️ لم يُحفظ الإغلاق التلقائي — حدّث Code.gs إلى v4.1 وانشر نسخة جديدة');
     } catch (e) { msg('formMsg', 'err', e.message); }
     busy(b, false);
   };
@@ -622,6 +717,7 @@
     // write hidden values used by save / agenda
     $('fStart').value = DT.date && DT.start ? DT.date + 'T' + DT.start : '';
     $('fEnd').value = DT.date && DT.end ? DT.date + 'T' + DT.end : '';
+    try { setAc(acSel); } catch (x) { /* auto-close hint not ready yet */ }
     const s = toMin(DT.start), e = toMin(DT.end);
     document.querySelectorAll('#dQuick button').forEach(b => b.classList.toggle('on', s != null && e != null && e - s === +b.dataset.d));
     document.querySelectorAll('#tQuick button').forEach(b => b.classList.toggle('on', b.dataset.t === DT.start));
@@ -738,15 +834,27 @@
       (e.organizer ? '<span><i data-lucide="building-2"></i> ' + esc(e.organizer) + '</span>' : '') +
       '<span class="en"><i data-lucide="hash"></i> ' + esc(e.id) + '</span>';
     $('dAgenda').innerHTML = agendaTable(e.agenda);
-    $('dStatus').innerHTML = statusChip(e.status);
+    $('dStatus').innerHTML = statusChip(e.status) + autoCloseNote(e);
     $('btnToggle').innerHTML = e.status === 'Open'
       ? '<i data-lucide="lock"></i> إغلاق التسجيل' : '<i data-lucide="unlock"></i> فتح التسجيل';
     icons();
   }
+  function autoCloseNote(e) {
+    if (e.autoCloseMin == null || !e.closesAt) return '';
+    const d = new Date(String(e.closesAt).slice(0, 16));
+    const t = isNaN(d) ? e.closesAt : d.toLocaleString('ar-SA-u-ca-gregory-nu-latn', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+    const past = !isNaN(d) && d <= new Date();
+    return '<div class="small muted" style="margin-top:4px"><i data-lucide="timer"></i> ' +
+      (e.status === 'Open' ? 'يُغلق تلقائيًا: ' : past ? 'أُغلق تلقائيًا: ' : 'الإغلاق التلقائي: ') + '<b>' + esc(t) + '</b></div>';
+  }
   $('btnToggle').onclick = async (ev) => {
     const b = ev.currentTarget, next = current.status === 'Open' ? 'Closed' : 'Open';
     busy(b, true);
-    try { await EA.call('setStatus', { id: current.id, status: next }); toast(next === 'Open' ? 'تم فتح التسجيل' : 'تم إغلاق التسجيل'); await loadEvents(); }
+    try {
+      const r = await EA.call('setStatus', { id: current.id, status: next });
+      toast(next === 'Open' ? (r.autoCloseCleared ? 'تم فتح التسجيل — وأُلغي الإغلاق التلقائي لهذه الفعالية' : 'تم فتح التسجيل') : 'تم إغلاق التسجيل');
+      await loadEvents();
+    }
     catch (e) { toast(e.message); }
     busy(b, false); renderHead();
   };
@@ -755,6 +863,7 @@
   function setTab(name) {
     document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
     document.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== name));
+    if (name === 'qr' && current && current.dynamicQr && !live.id) startLive();
     if (name === 'email') renderMail();
     if (name === 'fb') loadFb();
   }
@@ -769,9 +878,73 @@
       '(<span class="en">…/checkin.html</span>). ' + (EA.auth.user().role === 'admin'
         ? '<a href="#" onclick="EA.auth.settings();return false">اضبطه من ⚙ الإعدادات</a>.'
         : 'اطلب من مسؤول النظام ضبطه من الإعدادات.') + '</div>';
-    $('qr').innerHTML = '';
-    new QRCode($('qr'), { text: url, width: 480, height: 480, colorDark: '#241436', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    stopLive();
+    const dyn = !!current.dynamicQr;
+    ['qrLive', 'qrTimer', 'btnPresent'].forEach(i => $(i).classList.toggle('hidden', !dyn));
+    ['btnDownloadQr', 'btnPoster'].forEach(i => $(i).classList.toggle('hidden', dyn));
+    $('qrHelp').innerHTML = dyn
+      ? '<b>رمز متغيّر:</b> اعرضه على شاشة القاعة بزر «عرض على الشاشة». يتجدد كل ' + (current.qrStep || 60) + ' ثانية، ويُقبل المسح حتى ' + graceText(current.qrStep || 60) + ' من ظهور الرمز، ثم أمام الزائر 20 دقيقة لإكمال التسجيل. الرابط الثابت أعلاه لا يكفي وحده للتسجيل.'
+      : 'يمسح الزائر الرمز، يُدخل اسمه وبريده، ويصله بريد شكر تلقائيًا. تُحفظ البيانات في Google Sheet.';
+    if (dyn) return startLive();
+    drawQr($('qr'), url);
   }
+  function drawQr(el, text) {
+    el.innerHTML = '';
+    new QRCode(el, { text: text, width: 480, height: 480, colorDark: '#241436', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+  }
+
+  /* ---------- Dynamic QR (v3.8, interval per event since v4.0): new code from the server each interval ---------- */
+  const live = { timer: 0, tick: 0, until: 0, step: 60, id: '' };
+  function stopLive() { clearTimeout(live.timer); clearInterval(live.tick); live.id = ''; }
+  function liveVisible() {
+    return !$('present').classList.contains('hidden') ||
+      (!$('viewEvent').classList.contains('hidden') && !document.querySelector('[data-pane="qr"]').classList.contains('hidden'));
+  }
+  async function startLive() {
+    const ev = current; if (!ev || !ev.dynamicQr) return;
+    stopLive(); live.id = ev.id;
+    const run = async () => {
+      if (live.id !== ev.id) return;
+      if (!liveVisible()) { live.id = ''; clearInterval(live.tick); return; }
+      try {
+        const r = await EA.call('qrToken', { id: ev.id });
+        if (live.id !== ev.id) return;
+        const url = checkinUrl(ev.id) + '&k=' + encodeURIComponent(r.k);
+        live.step = r.step || 60; $('pStep').textContent = live.step; live.until = Date.now() + r.msLeft;
+        drawQr($('qr'), url);
+        if (!$('present').classList.contains('hidden')) drawQr($('pQr'), url);
+        $('btnOpenCheckin').href = url;
+        live.timer = setTimeout(run, Math.max(800, r.msLeft + 300));
+      } catch (e) {
+        $('qrSec').textContent = '…'; live.timer = setTimeout(run, 4000);
+      }
+    };
+    clearInterval(live.tick);
+    live.tick = setInterval(() => {
+      const left = Math.max(0, Math.ceil((live.until - Date.now()) / 1000));
+      const pct = Math.min(100, left / live.step * 100) + '%';
+      $('qrSec').textContent = left; $('pSec').textContent = left;
+      $('qrTimer').firstElementChild.style.width = pct; $('pBar').style.width = pct;
+    }, 250);
+    run();
+  }
+  $('btnPresent').onclick = () => {
+    const e = current; if (!e) return;
+    $('pName').textContent = e.name;
+    $('pMeta').textContent = '📍 ' + e.location + '  |  🗓 ' + fmt(e.start);
+    document.querySelectorAll('#present img[data-logo]').forEach(i => { i.src = (window.ITOC_LOGOS || {})[i.dataset.logo] || ''; });
+    $('present').classList.remove('hidden');
+    try { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen(); } catch (x) {}
+    startLive();
+  };
+  function closePresent() {
+    $('present').classList.add('hidden');
+    try { if (document.fullscreenElement) document.exitFullscreen(); } catch (x) {}
+    if (!liveVisible()) stopLive();
+  }
+  $('btnPresentClose').onclick = closePresent;
+  document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && !$('present').classList.contains('hidden')) closePresent(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && current && current.dynamicQr && !live.id && liveVisible()) startLive(); });
   function qrDataUrl() {
     const c = $('qr').querySelector('canvas');
     if (c) return c.toDataURL('image/png');
@@ -802,7 +975,7 @@
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
       ((e.agenda || []).length ? '<table class="ag"><tr><th>الوقت</th><th>البرنامج</th><th>المقدّم</th></tr>' + e.agenda.slice(0, 10).map(a =>
         '<tr><td>' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td>' + esc(a.speaker || '') + '</td></tr>').join('') + '</table>' : '') +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v3.7</div>' +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v4.1</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -847,7 +1020,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v3.7</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v4.1</p>';
   }
 
   $('btnCsv').onclick = () => {

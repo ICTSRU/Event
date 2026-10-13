@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 3.7
+ * Version: 4.1
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,14 +13,14 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '3.7';
+const APP_VERSION = '4.1';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
 
-// 'Agenda' (column K) was added in v3.7 — existing sheets get the header automatically
+// 'Agenda' (K) added in v2.9, 'QrMode' (L) in v3.8, 'AutoCloseMin' (M) in v4.1 — existing sheets get the headers automatically
 const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
-  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda'];
+  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda', 'QrMode', 'AutoCloseMin'];
 const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
 const LOG_HEAD = ['Timestamp', 'EventID', 'Subject', 'Recipients', 'Sent', 'Failed', 'Notes'];
 
@@ -40,12 +40,12 @@ function setup() {
   ensureSheet_(ss, SH_LOG, LOG_HEAD);
   ensureSheet_(ss, SH_FB, FB_HEAD);
   // Keep date-time strings as plain text so Sheets does not reformat them
-  ss.getSheetByName(SH_EVENTS).getRange('A:K').setNumberFormat('@');
+  ss.getSheetByName(SH_EVENTS).getRange('A:M').setNumberFormat('@');
   ss.getSheetByName(SH_ATT).getRange('A:G').setNumberFormat('@');
   // SRU Secure Access Kit: access list + access log
   const acl = setupAccessList();
   getLogSheet_();
-  // Retired sign-in methods (≤ v3.7): shared admin key
+  // Retired sign-in methods (≤ v3.2): shared admin key
   PropertiesService.getScriptProperties().deleteProperty('ADMIN_KEY');
   Logger.log('Setup complete (v' + APP_VERSION + '). AllowedUsers: ' + acl.total + ' (' + acl.added + ' added). ' +
     'Daily e-mail quota remaining: ' + MailApp.getRemainingDailyQuota());
@@ -75,7 +75,7 @@ function doGet(e) {
   // Public visitor API (check-in / evaluation pages on GitHub Pages)
   if (p.action) {
     try {
-      if (p.action === 'getEvent') return json_(getEventPublic_(p.id));
+      if (p.action === 'getEvent') return json_(getEventPublic_(p.id, p));
       if (p.action === 'checkin') return json_(checkin_(p));
       if (p.action === 'checkStatus') return json_(checkStatus_(p.id, p.email));
       if (p.action === 'fbInfo') return json_(fbInfo_(p));
@@ -99,7 +99,7 @@ function doPost(e) {
   }
   try {
     switch (body.action) {
-      case 'getEvent': return json_(getEventPublic_(body.id));
+      case 'getEvent': return json_(getEventPublic_(body.id, body));
       case 'checkin': return json_(checkin_(body));
       case 'checkStatus': return json_(checkStatus_(body.id, body.email));
       case 'fbInfo': return json_(fbInfo_(body));
@@ -125,6 +125,7 @@ function adminAction_(user, body) {
     case 'updateEvent': return updateEvent_(body.event);
     case 'setStatus': return setStatus_(body.id, body.status);
     case 'getAttendance': return getAttendance_(body.id);
+    case 'qrToken': return qrToken_(body.id);
     case 'dashboard': return dashboard_();
     case 'feedbackStatus': return feedbackStatus_(body.id);
     case 'sendFeedback': return sendFeedback_(body);
@@ -215,9 +216,38 @@ function publicEvent_(r) {
   return {
     id: r.EventID, name: r.EventName, location: r.Location,
     start: r.StartDateTime, end: r.EndDateTime, organizer: r.Organizer,
-    description: r.Description, status: r.Status, agenda: parseAgenda_(r.Agenda)
+    description: r.Description, status: effStatus_(r), agenda: parseAgenda_(r.Agenda),
+    autoCloseMin: autoCloseMin_(r), closesAt: autoCloseAt_(r) ? fmtIso_(autoCloseAt_(r)) : '', autoClosed: isAutoClosed_(r),
+    dynamicQr: qrStepOf_(r) > 0, qrStep: qrStepOf_(r)
   };
 }
+
+/* ---------------- auto-close (v4.1) ----------------
+ * AutoCloseMin: '' = off; 0 = close at the event end; 15/30/60/120 = minutes after the end.
+ * Events without an end time use the start time. The check happens on every request (no trigger needed)
+ * and the admin console's event list writes 'Closed' back to the sheet. */
+const AUTO_CLOSE_OPTS_ = [0, 15, 30, 60, 120];
+function autoCloseMin_(r) {
+  const v = String((r && r.AutoCloseMin) || '').trim();
+  return v === '' || isNaN(+v) ? null : +v;
+}
+function parseLocal_(s) {
+  s = String(s || '').trim().replace(' ', 'T').slice(0, 16);
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(s)) return null;
+  try { return Utilities.parseDate(s, TZ, "yyyy-MM-dd'T'HH:mm"); } catch (e) { return null; }
+}
+function fmtIso_(d) { return Utilities.formatDate(d, TZ, "yyyy-MM-dd'T'HH:mm"); }
+function autoCloseAt_(r) {
+  const m = autoCloseMin_(r);
+  if (m === null) return null;
+  const base = parseLocal_(r.EndDateTime) || parseLocal_(r.StartDateTime);
+  return base ? new Date(base.getTime() + m * 60000) : null;
+}
+function isAutoClosed_(r) {
+  const at = autoCloseAt_(r);
+  return r.Status === 'Open' && !!at && Date.now() >= at.getTime();
+}
+function effStatus_(r) { return isAutoClosed_(r) ? 'Closed' : r.Status; }
 
 /* ---------------- event agenda (برنامج الفعالية) ---------------- */
 function parseAgenda_(s) {
@@ -252,10 +282,68 @@ function agendaHtml_(agenda) {
 /* ------------------------------------------------------------------ */
 /* Public actions                                                      */
 /* ------------------------------------------------------------------ */
-function getEventPublic_(id) {
+function getEventPublic_(id, p) {
   const r = findEvent_(id);
   if (!r) return { ok: false, error: 'Event not found' };
-  return { ok: true, event: publicEvent_(r) };
+  if (!qrStepOf_(r)) return { ok: true, event: publicEvent_(r) };
+  // Dynamic QR (v3.8): the scanned code must be current, or the visitor must hold a ticket from a recent scan
+  p = p || {};
+  let tk = '';
+  if (qrKeyValid_(r, p.k)) tk = ticketNew_(r.EventID);
+  else if (ticketValid_(r.EventID, p.tk)) tk = String(p.tk);
+  if (!tk) return { ok: false, qrExpired: true, error: 'انتهت صلاحية رمز QR — امسح الرمز المعروض على الشاشة مرة أخرى | QR code expired — scan the code on screen again' };
+  return { ok: true, event: publicEvent_(r), ticket: tk, ticketMinutes: TICKET_MIN_ };
+}
+
+/* ---------------- Dynamic QR (v3.8; per-event interval since v4.0) ----------------
+ * The admin console shows a QR that changes every N seconds: checkin.html?e=ID&k=<slot>.<HMAC>.
+ * N is chosen per event (QrMode column: '' = static, 'Dynamic:30' | 'Dynamic:60' | 'Dynamic:120'; legacy 'Dynamic' = 60).
+ * A scan is accepted while the code is current or slightly older — at least ~1 minute of tolerance for camera/page delays.
+ * A valid scan returns a ticket that lets the visitor finish the form within TICKET_MIN_ minutes. */
+const QR_STEPS_ = [30, 60, 120];   // allowed intervals (seconds)
+const TICKET_MIN_ = 20;            // minutes to complete the form after scanning
+
+function qrStepOf_(r) {
+  const m = /^Dynamic(?::(\d+))?$/.exec(String((r && r.QrMode) || ''));
+  if (!m) return 0;
+  const n = parseInt(m[1] || '60', 10);
+  return QR_STEPS_.indexOf(n) >= 0 ? n : 60;
+}
+function qrGrace_(step) { return Math.max(1, Math.ceil(60 / step)); }   // 30 s → 2 old codes, 60/120 s → 1
+
+function sig_(text, len) {
+  const b = Utilities.computeHmacSha256Signature(text, fbSecret_());
+  return b.slice(0, len).map(function (x) { return ('0' + (x & 255).toString(16)).slice(-2); }).join('');
+}
+function qrSlot_(step) { return Math.floor(Date.now() / (step * 1000)); }
+function qrKey_(id, step, slot) { return slot.toString(36) + '.' + sig_(id + '|qr|' + step + '|' + slot, 8); }
+function qrKeyValid_(r, k) {
+  const step = qrStepOf_(r);
+  const m = /^([0-9a-z]+)\.([0-9a-f]{16})$/.exec(String(k || ''));
+  if (!step || !m) return false;
+  const slot = parseInt(m[1], 36), now = qrSlot_(step);
+  return slot <= now && slot >= now - qrGrace_(step) && qrKey_(r.EventID, step, slot) === String(k);
+}
+function ticketNew_(id) {
+  const t = Math.floor(Date.now() / 60000);   // minute of issue
+  return t.toString(36) + '.' + sig_(id + '|tk|' + t, 8);
+}
+function ticketValid_(id, tk) {
+  const m = /^([0-9a-z]+)\.([0-9a-f]{16})$/.exec(String(tk || ''));
+  if (!m) return false;
+  const t = parseInt(m[1], 36), now = Math.floor(Date.now() / 60000);
+  return t <= now && now - t <= TICKET_MIN_ && (t.toString(36) + '.' + sig_(id + '|tk|' + t, 8)) === String(tk);
+}
+
+/** Admin: current dynamic code for the live QR display. */
+function qrToken_(id) {
+  const r = findEvent_(id);
+  if (!r) throw new Error('Event not found');
+  const step = qrStepOf_(r);
+  if (!step) throw new Error('This event uses a static QR code');
+  const slot = qrSlot_(step);
+  return { ok: true, k: qrKey_(r.EventID, step, slot), step: step,
+    msLeft: (slot + 1) * step * 1000 - Date.now() };
 }
 
 function checkin_(b) {
@@ -266,7 +354,9 @@ function checkin_(b) {
 
   const ev = findEvent_(b.id);
   if (!ev) return { ok: false, error: 'Event not found' };
-  if (ev.Status !== 'Open') return { ok: false, error: 'Registration for this event is closed', closed: true };
+  if (effStatus_(ev) !== 'Open') return { ok: false, error: 'Registration for this event is closed', closed: true };
+  if (qrStepOf_(ev) && !ticketValid_(ev.EventID, b.tk) && !qrKeyValid_(ev, b.k))
+    return { ok: false, qrExpired: true, error: 'انتهت مهلة التسجيل — امسح رمز QR المعروض على الشاشة مرة أخرى | Time expired — scan the QR code on screen again' };
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -309,10 +399,20 @@ function checkStatus_(id, email) {
 function listEvents_() {
   const counts = {};
   rows_(SH_ATT).forEach(function (r) { counts[r.EventID] = (counts[r.EventID] || 0) + 1; });
-  const events = rows_(SH_EVENTS).map(function (r) {
+  const evRows = rows_(SH_EVENTS);
+  // Auto-close (v4.1): record the closure in the sheet so it matches what visitors see
+  evRows.forEach(function (r) {
+    if (isAutoClosed_(r)) {
+      sheet_(SH_EVENTS).getRange(r._row, 8).setValue('Closed');
+      sheet_(SH_EVENTS).getRange(r._row, 10).setValue(now_());
+      r.Status = 'Closed'; r._auto = true;
+    }
+  });
+  const events = evRows.map(function (r) {
     const e = publicEvent_(r);
     e.createdAt = r.CreatedAt;
     e.attendees = counts[r.EventID] || 0;
+    if (r._auto) e.autoClosed = true;
     return e;
   }).sort(function (a, b) { return String(b.start).localeCompare(String(a.start)); });
   return { ok: true, events: events, quota: MailApp.getRemainingDailyQuota(), version: APP_VERSION };
@@ -324,7 +424,9 @@ function validateEvent_(e) {
     name: clean_(e.name, 200), location: clean_(e.location, 200),
     start: clean_(e.start, 25), end: clean_(e.end, 25),
     organizer: clean_(e.organizer, 120), description: clean_(e.description, 1000),
-    agenda: JSON.stringify(cleanAgenda_(e.agenda))
+    agenda: JSON.stringify(cleanAgenda_(e.agenda)),
+    autoClose: AUTO_CLOSE_OPTS_.indexOf(parseInt(e.autoCloseMin, 10)) >= 0 && e.autoCloseMin !== null && e.autoCloseMin !== '' ? String(parseInt(e.autoCloseMin, 10)) : '',
+    qrMode: QR_STEPS_.indexOf(parseInt(e.qrStep, 10)) >= 0 ? 'Dynamic:' + parseInt(e.qrStep, 10) : (e.dynamicQr === true ? 'Dynamic:60' : '')
   };
   if (!out.name) throw new Error('Event name is required');
   if (!out.location) throw new Error('Location is required');
@@ -337,9 +439,9 @@ function createEvent_(e) {
   const v = validateEvent_(e);
   const id = newId_();
   const ts = now_();
-  ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);   // adds the Agenda header on older sheets
+  ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);   // adds the Agenda / QrMode / AutoCloseMin headers on older sheets
   sheet_(SH_EVENTS).appendRow([id, v.name, v.location, v.start, v.end, v.organizer,
-    v.description, 'Open', ts, ts, v.agenda]);
+    v.description, 'Open', ts, ts, v.agenda, v.qrMode, v.autoClose]);
   return { ok: true, id: id };
 }
 
@@ -350,7 +452,7 @@ function updateEvent_(e) {
   sheet_(SH_EVENTS).getRange(r._row, 2, 1, 6)
     .setValues([[v.name, v.location, v.start, v.end, v.organizer, v.description]]);
   ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);
-  sheet_(SH_EVENTS).getRange(r._row, 10, 1, 2).setValues([[now_(), v.agenda]]);
+  sheet_(SH_EVENTS).getRange(r._row, 10, 1, 4).setValues([[now_(), v.agenda, v.qrMode, v.autoClose]]);
   return { ok: true, id: r.EventID };
 }
 
@@ -360,6 +462,13 @@ function setStatus_(id, status) {
   if (!r) throw new Error('Event not found');
   sheet_(SH_EVENTS).getRange(r._row, 8).setValue(status);
   sheet_(SH_EVENTS).getRange(r._row, 10).setValue(now_());
+  // Reopening after the auto-close time: turn auto-close off, otherwise the event would close again at once
+  const at = autoCloseAt_(r);
+  if (status === 'Open' && at && Date.now() >= at.getTime()) {
+    ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);
+    sheet_(SH_EVENTS).getRange(r._row, 13).setValue('');
+    return { ok: true, autoCloseCleared: true };
+  }
   return { ok: true };
 }
 

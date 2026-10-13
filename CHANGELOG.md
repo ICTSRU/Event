@@ -1,5 +1,33 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v4.1 — 2026-10-13
+- **Auto-close registration (إغلاق التسجيل تلقائيًا)** — per event, in the new/edit event form: Off / at the event end / 15 min / 30 min / 1 hour / 2 hours after the end. New events default to **30 minutes after the end**; existing events stay Off until edited.
+  - The form shows the exact closing time; events without an end time count from the start time.
+  - Checked on every request (no time trigger needed): after the closing time the check-in page shows «التسجيل مغلق» and check-ins are refused. The admin event list records `Closed` in the sheet.
+  - The event page shows «يُغلق تلقائيًا: …» / «أُغلق تلقائيًا: …».
+  - Reopening an auto-closed event manually turns auto-close off for that event (otherwise it would close again at once).
+- Backend: new `AutoCloseMin` column (M) in `Events` (added automatically). `publicEvent_` returns `autoCloseMin`, `closesAt`, `autoClosed`.
+
+## v4.0 — 2026-10-13
+- **QR mode per event:** the event form now has a selector — **ثابت (Static)** / **كل 30 ثانية** / **كل 60 ثانية** / **كل 120 ثانية** — replacing the single dynamic-QR checkbox.
+  - Scan tolerance follows the interval (at least ~1 minute): 30 s → up to 1.5 min, 60 s → up to 2 min, 120 s → up to 4 min after the code first appears.
+  - The countdown, full-screen display and help texts show the event's own interval.
+  - Codes are signed with the interval, so changing an event's interval invalidates codes shown before the change.
+- Backend: `QrMode` column (L) now stores `Dynamic:30`, `Dynamic:60` or `Dynamic:120` (empty = static). Events saved as `Dynamic` in v3.8–v3.9 continue as 60 seconds. `publicEvent_` returns `qrStep`.
+
+## v3.9 — 2026-10-13
+- Dynamic QR now changes every **60 seconds** (was 30). A scan is accepted while the code is current or one code old (up to 2 minutes after it first appears). Countdown, full-screen display and help texts updated.
+
+## v3.8 — 2026-10-13
+- **Dynamic QR (رمز QR متغيّر كل 30 ثانية)** — optional per event (checkbox in the new/edit event form). Stops check-ins from people who are not in the room.
+  - The QR tab shows a live code that changes every 30 seconds with a countdown; «عرض على الشاشة» opens a full-screen display for the hall screen/projector (Esc to close).
+  - Each code is signed by the server (HMAC). A scan is accepted while the code is current or up to 2 codes old (≈ 1.5 minutes), so a photo or forwarded link stops working shortly after.
+  - A valid scan gives the visitor a 20-minute ticket to finish the form (survives a page refresh); the one-time key is removed from the address bar.
+  - Expired codes show «انتهت صلاحية رمز QR — امسح الرمز المعروض على الشاشة مرة أخرى».
+  - Download/poster buttons are hidden for dynamic events (a printed code would expire). Normal events and existing printed posters are unchanged.
+- Backend: new `QrMode` column (L) in `Events` (added automatically); new admin action `qrToken`; `getEvent` / `checkin` validate the code or ticket for dynamic events.
+- All files carry v3.8 (full Apps Script package, so the version shown is consistent everywhere).
+
 ## v3.7 — 2026-10-13
 - Fix: QR codes and evaluation links pointed to `melmahdy-2030.github.io/event/` (an old copy still on v1.2). `PUBLIC_PAGES_URL` now points to the live repository **ICTSRU/Event** — https://ictsru.github.io/Event/.
 

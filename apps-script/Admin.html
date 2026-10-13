@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v3.4</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v3.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <?!= include('Styles') ?>
@@ -107,7 +107,7 @@
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v3.4</span>
+      <span class="ver en">v3.7</span>
       <span id="authBox" class="actions" style="align-items:center"></span>
       <a class="btn secondary sm" href="#" data-page="dashboard"><i data-lucide="layout-dashboard"></i> لوحة المؤشرات</a>
       <a class="btn secondary sm hidden" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
@@ -175,7 +175,7 @@
               <input id="fOrganizer" maxlength="120" value="الإدارة التنفيذية للاتصالات وتقنية المعلومات">
             </div>
           </div>
-          <!-- Date & time picker (v3.4) — values are written to the hidden fStart / fEnd as YYYY-MM-DDTHH:MM -->
+          <!-- Date & time picker (v3.7) — values are written to the hidden fStart / fEnd as YYYY-MM-DDTHH:MM -->
           <input type="hidden" id="fStart"><input type="hidden" id="fEnd">
           <div class="dt">
             <div class="dt-cal">
@@ -231,7 +231,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img data-logo="sru" alt="">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v3.4</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v3.7</div></div>
             <img data-logo="ictd" alt="">
           </div>
         </div>
@@ -352,7 +352,7 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v3.4</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v3.7</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img data-logo="itoc" alt="ITOC — IT Operations Center"></a>
   </div>
 </footer>
@@ -421,7 +421,7 @@
       $('btnSendFb').disabled = !pending;
     } catch (e) {
       $('fbKpis').innerHTML = '';
-      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v3.4 وانشر نسخة جديدة.' : '');
+      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v3.7 وانشر نسخة جديدة.' : '');
     }
   }
   $('fbTestTo').value = EA.store('ea_test_email') || EA.cfg.TEST_EMAIL || '';
@@ -472,7 +472,7 @@
     const older = !have || (parseFloat(have) < parseFloat(want));
     $('verWarn').classList.toggle('hidden', !older || EA.isDemo());
     if (older && !EA.isDemo()) $('verWarn').innerHTML =
-      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v3.4') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
+      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v3.7') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
       'بعض الميزات الجديدة لن تُحفظ حتى تحدّث الخادم: استبدل ملفات <span class="en">Code.gs / Feedback.gs / EmailAssets.gs</span> في محرر Apps Script، ثم <span class="en">Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy</span>.';
   }
 
@@ -802,7 +802,7 @@
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
       ((e.agenda || []).length ? '<table class="ag"><tr><th>الوقت</th><th>البرنامج</th><th>المقدّم</th></tr>' + e.agenda.slice(0, 10).map(a =>
         '<tr><td>' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td>' + esc(a.speaker || '') + '</td></tr>').join('') + '</table>' : '') +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v3.4</div>' +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v3.7</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -847,7 +847,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v3.4</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v3.7</p>';
   }
 
   $('btnCsv').onclick = () => {

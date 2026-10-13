@@ -1,5 +1,5 @@
 /**
- * Email assets (v3.4) — logos embedded as inline images so Outlook/Gmail show them without 'download pictures'.
+ * Email assets (v3.7) — logos embedded as inline images so Outlook/Gmail show them without 'download pictures'.
  * Generated from assets/*.png. Do not edit by hand.
  */
 const EMAIL_ASSETS_ = {

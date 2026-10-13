@@ -1,7 +1,7 @@
-# منصة تسجيل حضور وإدارة الفعاليات · Event Attendance & Management Platform — v3.4
+# منصة تسجيل حضور وإدارة الفعاليات · Event Attendance & Management Platform — v3.7
 
 QR attendance, thank-you and evaluation e-mails, agenda, reports and dashboard for SRU events.
-From v3.4 the admin console and dashboard are protected with the **SRU Secure Access Kit v1.4**:
+From v3.7 the admin console and dashboard are protected with the **SRU Secure Access Kit v1.4**:
 sign-in with the university Google account (@sr.edu.sa), an access list, and a sign-in log.
 
 ## Architecture
@@ -24,7 +24,7 @@ public JSON API only (check-in, evaluation)        Admin.html + Dashboard.html, 
 | Path | Upload to | Contents |
 |---|---|---|
 | `apps-script/` | the Apps Script project bound to the Sheet | `Code.gs`, `SecureAccess.gs`, `Feedback.gs`, `EmailAssets.gs`, `appsscript.json`, HTML files `Admin`, `Dashboard`, `Client`, `Styles`, `Logos`, `Denied` |
-| `github/` | the GitHub Pages repository (its root) | `index.html` (sign-in landing), `checkin.html`, `feedback.html`, `dashboard.html` (redirect), `assets/` |
+| `github/` | the GitHub Pages repository (its root) | `index.html` (sign-in landing), `checkin.html`, `feedback.html`, `dashboard.html` (redirect) — **self-contained** (styles, scripts and logos inside each page). `assets/` holds the editable sources only |
 
 ## Sheet tabs
 | Tab | Purpose |
@@ -49,7 +49,7 @@ public JSON API only (check-in, evaluation)        Admin.html + Dashboard.html, 
    - رابط صفحات الزوار — the GitHub Pages folder (used in QR codes)
    - رابط المنصة الآمن — deployment B's URL
    - رابط صفحة الدخول — the GitHub landing page
-6. **GitHub (`melmahdy-2030/event`):** delete the current files, then drag the **contents** of `github/` — including the `assets` folder itself — into *Add file ▸ Upload files*. The pages load `assets/…`; files uploaded flat at the root are not found. In `index.html` CONFIG set `WEB_APP_URL` to deployment B's URL.
+6. **GitHub (`ICTSRU/Event`):** upload `index.html`, `checkin.html`, `feedback.html`, `dashboard.html` to the repository root (replace the old files). No folder structure is needed — each page is self-contained. Delete the old loose files (`api.js`, `config.js`, `sru-theme.css`, logos, `Code.gs`, `appsscript.json`, `download`).
 7. **Test:** own account ✓ · Incognito → Google sign-in ✓ · personal Gmail → refused ✓ · scan a QR code ✓.
 
 Later code updates: update **both** deployments (Manage deployments ▸ ✏️ ▸ New version), so their URLs stay the same.

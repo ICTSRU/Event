@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 3.4
+ * Version: 3.7
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,12 +13,12 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '3.4';
+const APP_VERSION = '3.7';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
 
-// 'Agenda' (column K) was added in v3.4 — existing sheets get the header automatically
+// 'Agenda' (column K) was added in v3.7 — existing sheets get the header automatically
 const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
   'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda'];
 const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
@@ -45,7 +45,7 @@ function setup() {
   // SRU Secure Access Kit: access list + access log
   const acl = setupAccessList();
   getLogSheet_();
-  // Retired sign-in methods (≤ v3.4): shared admin key
+  // Retired sign-in methods (≤ v3.7): shared admin key
   PropertiesService.getScriptProperties().deleteProperty('ADMIN_KEY');
   Logger.log('Setup complete (v' + APP_VERSION + '). AllowedUsers: ' + acl.total + ' (' + acl.added + ' added). ' +
     'Daily e-mail quota remaining: ' + MailApp.getRemainingDailyQuota());

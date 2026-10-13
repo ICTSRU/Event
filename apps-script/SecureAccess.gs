@@ -1,6 +1,6 @@
 /**
  * =====================================================================
- *  SRU Secure Access Kit v1.4 — applied to the Event Attendance & Management Platform (v3.4)
+ *  SRU Secure Access Kit v1.4 — applied to the Event Attendance & Management Platform (v3.7)
  *  Access: Sulaiman Al Rajhi University Google accounts (@sr.edu.sa) on the AllowedUsers list
  *  ICTD — ITOC
  * ---------------------------------------------------------------------
@@ -21,10 +21,10 @@ const FAVICON_URL    = 'https://ictsru.github.io/ITOC/assets/itoc-logo.png';
 /* Secure platform URL (the "Anyone within Sulaiman Al Rajhi University" deployment, …/exec).
    Used for the link between the console and the dashboard and in access e-mails.
    Leave '' to set it from the console (⚙ الإعدادات) — it is then kept in Script Properties. */
-const PLATFORM_URL   = '';
+const PLATFORM_URL   = 'https://script.google.com/a/macros/sr.edu.sa/s/AKfycbz60Cf78S2Sr-kqqNytnZ51T4d-KA9jOjfLi05juL3gkk7K8-LDdbdSPSWmpkz78Y5x/exec';
 /* Public pages on GitHub Pages (folder that holds checkin.html / feedback.html) — used in QR codes.
    Leave '' to set it from the console (⚙ الإعدادات). Example: 'https://ictsru.github.io/event-attendance/' */
-const PUBLIC_PAGES_URL = 'https://melmahdy-2030.github.io/event/';   // GitHub repo melmahdy-2030/event
+const PUBLIC_PAGES_URL = 'https://ictsru.github.io/Event/';   // GitHub repo ICTSRU/Event
 
 /* Access log */
 const LOG_ENABLED        = true;

@@ -1,5 +1,15 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v3.7 — 2026-10-13
+- Fix: QR codes and evaluation links pointed to `melmahdy-2030.github.io/event/` (an old copy still on v1.2). `PUBLIC_PAGES_URL` now points to the live repository **ICTSRU/Event** — https://ictsru.github.io/Event/.
+
+## v3.6 — 2026-10-13
+- Fix: the QR check-in page showed unstyled with all sections visible — the GitHub repo still held v1.2 files at its root, so `assets/…` (styles, config, API script, logos) were not found.
+- Visitor pages (`checkin.html`, `feedback.html`) and the sign-in landing (`index.html`) are now **self-contained**: styles, configuration, API script and logos are embedded. They work regardless of how files are uploaded (no `assets/` folder needed on GitHub).
+
+## v3.5 — 2026-10-12
+- Secure web-app URL (deployment "Anyone within Sulaiman Al Rajhi University") set in `github/index.html` (`WEB_APP_URL`) and `SecureAccess.gs` (`PLATFORM_URL`) — sign-in button and console ↔ dashboard links work without manual settings.
+
 ## v3.4 — 2026-10-12
 - Pre-configured for GitHub repository `melmahdy-2030/event`: `PUBLIC_PAGES_URL` = https://melmahdy-2030.github.io/event/ (QR codes and evaluation links work without a manual settings step).
 - README: GitHub upload must keep the `assets/` folder — the live repo had all files at the root, so `assets/…` (styles, scripts, logos, config) were not found.

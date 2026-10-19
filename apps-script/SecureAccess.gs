@@ -1,6 +1,6 @@
 /**
  * =====================================================================
- *  SRU Secure Access Kit v1.4 — applied to the Event Attendance & Management Platform (v4.1)
+ *  SRU Secure Access Kit v1.4 — applied to the Event Attendance & Management Platform (v4.7)
  *  Access: Sulaiman Al Rajhi University Google accounts (@sr.edu.sa) on the AllowedUsers list
  *  ICTD — ITOC
  * ---------------------------------------------------------------------
@@ -16,7 +16,7 @@
 const APP_NAME       = 'منصة تسجيل حضور وإدارة الفعاليات';
 const APP_NAME_EN    = 'Event Attendance & Management Platform';
 const ALLOWED_DOMAIN = 'sr.edu.sa';
-const FAVICON_URL    = 'https://ictsru.github.io/ITOC/assets/itoc-logo.png';
+const FAVICON_URL    = 'https://ictsru.github.io/Event/favicon.png';   // v4.4: platform logo (upload github/favicon.png)
 
 /* Secure platform URL (the "Anyone within Sulaiman Al Rajhi University" deployment, …/exec).
    Used for the link between the console and the dashboard and in access e-mails.
@@ -58,7 +58,9 @@ const DEFAULT_ALLOWED = [
 const ACCESS_CACHE_SECONDS = 120;         // list changes take effect within 2 minutes
 /* ▲▲▲ CONFIG ▲▲▲ */
 
-const ROLE_LABELS   = { admin: 'مسؤول النظام', user: 'منظم فعاليات' };
+const ROLE_LABELS   = { admin: 'مسؤول النظام', user: 'منظم فعاليات', viewer: 'مستعرض (عرض فقط)' };
+// v4.3: 'viewer' can open the console and dashboard and view events, reports, QR codes and evaluation results — no changes, no e-mails
+function normRole_(v) { v = String(v || '').trim().toLowerCase(); return v === 'admin' || v === 'viewer' ? v : 'user'; }
 const LOG_HEADERS   = ['timestamp', 'date', 'time', 'day', 'email', 'result', 'version'];
 const DAYS_AR_      = ['الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 const ACCESS_HEADERS = ['email', 'name', 'role', 'active', 'notes'];
@@ -151,7 +153,7 @@ function accessStatus_(email) {
 
 function userInfo_(email) {
   const a = aclMap_()[email] || {};
-  const role = isOwner_(email) ? 'admin' : (a.role === 'admin' ? 'admin' : 'user');
+  const role = isOwner_(email) ? 'admin' : normRole_(a.role);
   return { email: email, name: a.name || '', role: role, roleLabel: ROLE_LABELS[role], mode: ACCESS_MODE };
 }
 
@@ -169,7 +171,7 @@ function aclMap_() {
       sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues().forEach(function (r) {
         const e = String(r[0] || '').trim().toLowerCase();
         if (!e) return;
-        map[e] = { name: String(r[1] || ''), role: String(r[2] || 'user').toLowerCase() === 'admin' ? 'admin' : 'user',
+        map[e] = { name: String(r[1] || ''), role: normRole_(r[2]),
           active: !(r[3] === false || String(r[3]).toUpperCase() === 'FALSE'), notes: String(r[4] || '') };
       });
     }
@@ -190,7 +192,7 @@ function accessSheet_(create) {
     [260, 200, 100, 70, 260].forEach(function (w, i) { sh.setColumnWidth(i + 1, w); });
     sh.getRange(2, 4, 300, 1).insertCheckboxes();
     sh.getRange('A1').setNote('البريد الجامعي كاملًا — name@sr.edu.sa');
-    sh.getRange('C1').setNote('admin = مسؤول النظام (إدارة المستخدمين والإعدادات) · user = منظم فعاليات');
+    sh.getRange('C1').setNote('admin = مسؤول النظام (إدارة المستخدمين والإعدادات) · user = منظم فعاليات · viewer = مستعرض (عرض فقط)');
     sh.getRange('D1').setNote('ألغِ العلامة لإيقاف الوصول دون حذف الصف');
   }
   return sh;
@@ -233,7 +235,7 @@ function aclList_() {
     sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues().forEach(function (r) {
       const e = String(r[0] || '').trim().toLowerCase();
       if (!e) return;
-      const role = isOwner_(e) || String(r[2]).toLowerCase() === 'admin' ? 'admin' : 'user';
+      const role = isOwner_(e) ? 'admin' : normRole_(r[2]);
       users.push({ email: e, name: String(r[1] || ''), role: role, roleLabel: ROLE_LABELS[role],
         active: isOwner_(e) || !(r[3] === false || String(r[3]).toUpperCase() === 'FALSE'),
         owner: isOwner_(e), notes: String(r[4] || ''), lastLogin: last[e] || '' });
@@ -246,7 +248,7 @@ function aclList_() {
 function aclSave_(admin, b) {
   const email = String(b.email || '').trim().toLowerCase();
   if (!isAllowed_(email)) throw new Error('يجب أن يكون البريد جامعيًا ينتهي بـ @' + ALLOWED_DOMAIN);
-  const role = b.role === 'admin' ? 'admin' : 'user';
+  const role = normRole_(b.role);
   if (email === admin.email && role !== 'admin') throw new Error('لا يمكنك إزالة صلاحية المسؤول عن حسابك');
   const sh = accessSheet_(true);
   const n = Math.max(sh.getLastRow() - 1, 0);
@@ -287,17 +289,24 @@ function aclSetActive_(admin, email, active) {
 
 function sendAccessMail_(email, name, role, admin) {
   const landing = PropertiesService.getScriptProperties().getProperty('LANDING_URL') || publicPagesUrl_() || platformUrl_();
+  const p = 'dir="rtl" style="text-align:right;margin:0 0 12px"';
   MailApp.sendEmail({
     to: email, name: SENDER_NAME,
     subject: 'صلاحية دخول إلى منصة الفعاليات | Access granted — ' + APP_NAME_EN,
-    htmlBody: emailShell_({ EventName: APP_NAME },
-      '<p dir="rtl" style="text-align:right">مرحبًا ' + esc_(name || '') + '،<br>منحك ' + esc_(admin.name || admin.email) +
-      ' صلاحية <b>' + esc_(ROLE_LABELS[role]) + '</b> في ' + esc_(APP_NAME) + '.</p>' +
-      '<p dir="rtl" style="text-align:right">الدخول بحسابك الجامعي <span dir="ltr">' + esc_(email) + '</span> — لا حاجة لكلمة مرور جديدة.</p>' +
-      (landing ? '<p dir="rtl" style="text-align:right">رابط المنصة: <a href="' + esc_(landing) + '">' + esc_(landing) + '</a></p>' : '') +
-      '<p dir="ltr" style="text-align:left;color:#6b5a80;font-size:13px">Sign in with your SRU Google account.</p>',
+    htmlBody: emailShell_({ EventName: 'تم منحك صلاحية الدخول' },
+      '<p ' + p + '>مرحبًا ' + esc_(name || '') + '،</p>' +
+      '<p ' + p + '>منحك ' + esc_(admin.name || admin.email) + ' صلاحية <b>' + esc_(ROLE_LABELS[role]) + '</b> في ' + esc_(APP_NAME) + '.</p>' +
+      '<p ' + p + '>الدخول بحسابك الجامعي <span dir="ltr">' + esc_(email) + '</span>، ولا حاجة لكلمة مرور جديدة.</p>' +
+      (landing
+        ? '<table role="presentation" cellpadding="0" cellspacing="0" border="0" align="right" style="margin:6px 0 14px"><tr>' +
+            '<td bgcolor="#501e8c" style="background:#501e8c;border-radius:4px;padding:10px 22px">' +
+            '<a href="' + esc_(landing) + '" style="color:#ffffff;text-decoration:none;font-family:' + FONT_ + ';font-size:15px;font-weight:bold">الدخول إلى المنصة</a></td></tr></table>' +
+          '<div style="clear:both"></div>' +
+          '<p dir="ltr" style="text-align:right;margin:0 0 12px;font-size:12.5px;color:#6b5a80"><a href="' + esc_(landing) + '" style="color:#0a6eaa">' + esc_(landing) + '</a></p>'
+        : '') +
+      '<p dir="ltr" style="text-align:left;color:#6b5a80;font-size:13px;margin:0">You have been given access. Sign in with your SRU Google account.</p>',
       { kicker: 'صلاحية الدخول · <span dir="ltr" style="white-space:nowrap">Access</span>', noMeta: true }),
-    inlineImages: emailImages_(['sru', 'ictd', 'itoc']),
+    inlineImages: emailImages_(['sru', 'ictd', 'itoc', 'mark']),
     body: 'Access granted to ' + APP_NAME_EN + (landing ? ': ' + landing : '')
   });
 }

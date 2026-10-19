@@ -1,4 +1,4 @@
-# منصة تسجيل حضور وإدارة الفعاليات · Event Attendance & Management Platform — v4.1
+# منصة تسجيل حضور وإدارة الفعاليات · Event Attendance & Management Platform — v4.7
 
 QR attendance, thank-you and evaluation e-mails, agenda, reports and dashboard for SRU events.
 From v3.3 the admin console and dashboard are protected with the **SRU Secure Access Kit v1.4**:

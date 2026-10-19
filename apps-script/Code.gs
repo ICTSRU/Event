@@ -1,7 +1,7 @@
 /**
  * SRU ICTD — Event Attendance & Management Platform
  * Backend: Google Apps Script Web App + Google Sheets + MailApp
- * Version: 4.1
+ * Version: 4.7
  *
  * Sheets created by setup():
  *   Events      — one row per event
@@ -13,14 +13,14 @@
  *                            getAttendance, sendBulk, quota
  */
 
-const APP_VERSION = '4.1';
+const APP_VERSION = '4.7';
 const SH_EVENTS = 'Events';
 const SH_ATT = 'Attendance';
 const SH_LOG = 'MailLog';
 
-// 'Agenda' (K) added in v2.9, 'QrMode' (L) in v3.8, 'AutoCloseMin' (M) in v4.1 — existing sheets get the headers automatically
+// 'Agenda' (K) added in v2.9, 'QrMode' (L) in v3.8, 'AutoCloseMin' (M) in v4.1, 'Sponsor' / 'SponsorEmail' (N, O) in v4.7 — existing sheets get the headers automatically
 const EV_HEAD = ['EventID', 'EventName', 'Location', 'StartDateTime', 'EndDateTime',
-  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda', 'QrMode', 'AutoCloseMin'];
+  'Organizer', 'Description', 'Status', 'CreatedAt', 'UpdatedAt', 'Agenda', 'QrMode', 'AutoCloseMin', 'Sponsor', 'SponsorEmail'];
 const AT_HEAD = ['Timestamp', 'EventID', 'EventName', 'FullName', 'Email', 'ThankYouSent', 'UserAgent'];
 const LOG_HEAD = ['Timestamp', 'EventID', 'Subject', 'Recipients', 'Sent', 'Failed', 'Notes'];
 
@@ -40,7 +40,7 @@ function setup() {
   ensureSheet_(ss, SH_LOG, LOG_HEAD);
   ensureSheet_(ss, SH_FB, FB_HEAD);
   // Keep date-time strings as plain text so Sheets does not reformat them
-  ss.getSheetByName(SH_EVENTS).getRange('A:M').setNumberFormat('@');
+  ss.getSheetByName(SH_EVENTS).getRange('A:O').setNumberFormat('@');
   ss.getSheetByName(SH_ATT).getRange('A:G').setNumberFormat('@');
   // SRU Secure Access Kit: access list + access log
   const acl = setupAccessList();
@@ -121,20 +121,25 @@ function adminAction_(user, body) {
     case 'setUserActive': requireAdmin_(user); return aclSetActive_(user, body.email, !!body.active);
     case 'saveSettings': requireAdmin_(user); return saveSettings_(body);
     case 'listEvents': return listEvents_();
-    case 'createEvent': return createEvent_(body.event);
-    case 'updateEvent': return updateEvent_(body.event);
-    case 'setStatus': return setStatus_(body.id, body.status);
+    case 'createEvent': requireEditor_(user); return createEvent_(body.event);
+    case 'updateEvent': requireEditor_(user); return updateEvent_(body.event);
+    case 'setStatus': requireEditor_(user); return setStatus_(body.id, body.status);
     case 'getAttendance': return getAttendance_(body.id);
     case 'qrToken': return qrToken_(body.id);
     case 'dashboard': return dashboard_();
     case 'feedbackStatus': return feedbackStatus_(body.id);
-    case 'sendFeedback': return sendFeedback_(body);
-    case 'testFeedback': return testFeedback_(body);
-    case 'sendBulk': return sendBulk_(body);
+    case 'sendFeedback': requireEditor_(user); return sendFeedback_(body);
+    case 'testFeedback': requireEditor_(user); return testFeedback_(body);
+    case 'sendBulk': requireEditor_(user); return sendBulk_(body);
     case 'quota': return { ok: true, remaining: MailApp.getRemainingDailyQuota() };
     case 'verify': return { ok: true, sheet: ss_().getName(), sheetUrl: ss_().getUrl() };
     default: throw new Error('Unknown action');
   }
+}
+
+/** v4.3: viewers (role 'viewer') may only read — events, reports, QR codes, evaluation results, dashboard. */
+function requireEditor_(user) {
+  if (!user || user.role === 'viewer') throw new Error('صلاحيتك «مستعرض» تسمح بالعرض فقط | Viewer accounts are read-only');
 }
 
 function requireAdmin_(user) {
@@ -215,7 +220,7 @@ function newId_() {
 function publicEvent_(r) {
   return {
     id: r.EventID, name: r.EventName, location: r.Location,
-    start: r.StartDateTime, end: r.EndDateTime, organizer: r.Organizer,
+    start: r.StartDateTime, end: r.EndDateTime, organizer: r.Organizer, sponsor: r.Sponsor || '',
     description: r.Description, status: effStatus_(r), agenda: parseAgenda_(r.Agenda),
     autoCloseMin: autoCloseMin_(r), closesAt: autoCloseAt_(r) ? fmtIso_(autoCloseAt_(r)) : '', autoClosed: isAutoClosed_(r),
     dynamicQr: qrStepOf_(r) > 0, qrStep: qrStepOf_(r)
@@ -265,17 +270,19 @@ function cleanAgenda_(list) {
 
 function agendaHtml_(agenda) {
   if (!agenda || !agenda.length) return '';
+  // v4.7: two columns (time | item + presenter) so the item never gets squeezed on a phone; times as ص/م
   const th = 'style="background:#f0ebf8;color:#3a1464;font-family:' + FONT_ + ';font-size:13px;padding:8px 10px;text-align:right;border-bottom:1px solid #e6dff0"';
-  const td = 'font-family:' + FONT_ + ';font-size:14px;color:#241436;padding:8px 10px;border-bottom:1px solid #eee8f5;text-align:right;vertical-align:top';
+  const td = 'font-family:' + FONT_ + ';font-size:14px;color:#241436;padding:9px 10px;border-bottom:1px solid #eee8f5;text-align:right;vertical-align:top';
   return '<div dir="rtl" style="text-align:right;font-weight:bold;font-size:16px;color:#3a1464;margin:18px 0 8px">برنامج الفعالية · <span dir="ltr">Agenda</span></div>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" dir="rtl" style="border:1px solid #e6dff0;border-collapse:collapse">' +
-    '<tr><td ' + th + ' width="110">الوقت</td><td ' + th + '>الفقرة</td><td ' + th + ' width="150">المقدّم</td></tr>' +
+    '<tr><td ' + th + ' width="96">الوقت</td><td ' + th + '>الفقرة</td></tr>' +
     agenda.map(function (a) {
-      // RTL order: start time on the right (read first), each time isolated as LTR
-      const time = a.from ? '<span dir="ltr">' + esc_(a.from) + '</span>' + (a.to ? ' – <span dir="ltr">' + esc_(a.to) + '</span>' : '') : '';
-      return '<tr><td style="' + td + ';white-space:nowrap">' + time + '</td>' +
-        '<td style="' + td + ';font-weight:bold">' + esc_(a.title) + '</td>' +
-        '<td style="' + td + ';color:#6b5a80">' + esc_(a.speaker) + '</td></tr>';
+      // start time first (on the right), each time isolated
+      const time = a.from ? '<span dir="rtl" style="white-space:nowrap">' + esc_(t12_(a.from)) + '</span>' +
+        (a.to ? '<br><span dir="rtl" style="white-space:nowrap;color:#6b5a80;font-size:12.5px">إلى ' + esc_(t12_(a.to)) + '</span>' : '') : '';
+      return '<tr><td style="' + td + ';color:#501e8c;font-weight:bold;white-space:nowrap" width="96">' + time + '</td>' +
+        '<td style="' + td + '"><b>' + esc_(a.title) + '</b>' +
+        (a.speaker ? '<div style="font-size:13px;color:#6b5a80;margin-top:2px">' + esc_(a.speaker) + '</div>' : '') + '</td></tr>';
     }).join('') + '</table>';
 }
 
@@ -412,6 +419,7 @@ function listEvents_() {
     const e = publicEvent_(r);
     e.createdAt = r.CreatedAt;
     e.attendees = counts[r.EventID] || 0;
+    e.sponsorEmail = r.SponsorEmail || '';   // admin console only — never sent to the public pages
     if (r._auto) e.autoClosed = true;
     return e;
   }).sort(function (a, b) { return String(b.start).localeCompare(String(a.start)); });
@@ -424,11 +432,13 @@ function validateEvent_(e) {
     name: clean_(e.name, 200), location: clean_(e.location, 200),
     start: clean_(e.start, 25), end: clean_(e.end, 25),
     organizer: clean_(e.organizer, 120), description: clean_(e.description, 1000),
+    sponsor: clean_(e.sponsor, 200), sponsorEmail: clean_(e.sponsorEmail, 160).toLowerCase(),
     agenda: JSON.stringify(cleanAgenda_(e.agenda)),
     autoClose: AUTO_CLOSE_OPTS_.indexOf(parseInt(e.autoCloseMin, 10)) >= 0 && e.autoCloseMin !== null && e.autoCloseMin !== '' ? String(parseInt(e.autoCloseMin, 10)) : '',
     qrMode: QR_STEPS_.indexOf(parseInt(e.qrStep, 10)) >= 0 ? 'Dynamic:' + parseInt(e.qrStep, 10) : (e.dynamicQr === true ? 'Dynamic:60' : '')
   };
   if (!out.name) throw new Error('Event name is required');
+  if (out.sponsorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(out.sponsorEmail)) throw new Error('بريد الراعي غير صحيح | Invalid sponsor e-mail');
   if (!out.location) throw new Error('Location is required');
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(out.start)) throw new Error('Valid start date/time is required');
   if (out.end && out.end < out.start) throw new Error('End time must be after start time');
@@ -439,9 +449,9 @@ function createEvent_(e) {
   const v = validateEvent_(e);
   const id = newId_();
   const ts = now_();
-  ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);   // adds the Agenda / QrMode / AutoCloseMin headers on older sheets
+  ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);   // adds the Agenda / QrMode / AutoCloseMin / Sponsor headers on older sheets
   sheet_(SH_EVENTS).appendRow([id, v.name, v.location, v.start, v.end, v.organizer,
-    v.description, 'Open', ts, ts, v.agenda, v.qrMode, v.autoClose]);
+    v.description, 'Open', ts, ts, v.agenda, v.qrMode, v.autoClose, v.sponsor, v.sponsorEmail]);
   return { ok: true, id: id };
 }
 
@@ -452,7 +462,7 @@ function updateEvent_(e) {
   sheet_(SH_EVENTS).getRange(r._row, 2, 1, 6)
     .setValues([[v.name, v.location, v.start, v.end, v.organizer, v.description]]);
   ensureSheet_(ss_(), SH_EVENTS, EV_HEAD);
-  sheet_(SH_EVENTS).getRange(r._row, 10, 1, 4).setValues([[now_(), v.agenda, v.qrMode, v.autoClose]]);
+  sheet_(SH_EVENTS).getRange(r._row, 10, 1, 6).setValues([[now_(), v.agenda, v.qrMode, v.autoClose, v.sponsor, v.sponsorEmail]]);
   return { ok: true, id: r.EventID };
 }
 
@@ -510,7 +520,7 @@ function sendBulk_(b) {
   });
 
   let quota = MailApp.getRemainingDailyQuota();
-  const images = emailImages_(['sru', 'ictd', 'itoc']);
+  const images = emailImages_(['sru', 'ictd', 'itoc', 'mark']);
   let sent = 0, failed = 0, skipped = 0;
   unique.forEach(function (p) {
     if (quota <= 0) { skipped++; return; }
@@ -589,6 +599,21 @@ const ITOC_URL = 'https://ictsru.github.io/ITOC/#forms';
 const FONT_ = "Cairo,'Segoe UI',Tahoma,Arial,sans-serif";
 
 // Arabic long date, e.g. "الخميس، 15 أكتوبر 2026 في 10:00 ص"
+/** 'HH:MM' → '10:15 ص' (v4.5) */
+function t12_(t) {
+  const m = /^(\d{2}):(\d{2})/.exec(String(t || ''));
+  if (!m) return String(t || '');
+  const h = +m[1];
+  return (h % 12 || 12) + ':' + m[2] + '\u00a0' + (h < 12 ? 'ص' : 'م');   // no-break space keeps 'ص/م' with the time
+}
+
+/** Start date-time plus the end time when the event ends the same day (v4.5) */
+function fmtArRange_(start, end) {
+  const s = fmtArDate_(start);
+  const a = String(start || ''), b = String(end || '');
+  return b && a.slice(0, 10) === b.slice(0, 10) && b.length >= 16 ? s + ' – ' + t12_(b.slice(11, 16)) : s;
+}
+
 function fmtArDate_(s) {
   if (!s) return '';
   const d = new Date(String(s).slice(0, 16) + ':00');
@@ -612,12 +637,25 @@ function emailShell_(ev, inner, opts) {
   opts = opts || {};
   const purple = '#501e8c', ink = '#241436', muted = '#6b5a80';
   const hero =
-    '<tr><td style="background:' + purple + ';padding:22px 26px;font-family:' + FONT_ + ';color:#ffffff;text-align:right" dir="rtl">' +
-      '<div style="font-size:13px;color:#e4d9f3">منصة تسجيل حضور وإدارة الفعاليات · ' + (opts.kicker || '<span dir="ltr" style="white-space:nowrap">Attendance check-in</span>') + '</div>' +
-      '<div style="font-size:24px;font-weight:700;line-height:1.5;margin:6px 0 10px">' + esc_(ev.EventName) + '</div>' +
+    '<tr><td style="background:' + purple + ';padding:20px 26px 22px;font-family:' + FONT_ + ';color:#ffffff;text-align:right" dir="rtl">' +
+      // v4.5: logo + platform name + message type as one block (no awkward wrapping on phones)
+      '<table role="presentation" cellpadding="0" cellspacing="0" border="0" dir="rtl" align="right"><tr>' +
+        '<td valign="middle" width="40" style="padding:0 0 0 10px"><img src="cid:mark" width="36" height="36" alt="" style="display:block;border:0;width:36px;height:36px"></td>' +
+        '<td valign="middle" dir="rtl" style="font-family:' + FONT_ + ';text-align:right">' +
+          '<div style="font-size:14px;font-weight:bold;color:#ffffff;line-height:1.5">منصة تسجيل حضور وإدارة الفعاليات</div>' +
+          '<div style="font-size:12.5px;color:#e4d9f3;line-height:1.5">' + (opts.kicker || 'تسجيل الحضور · <span dir="ltr" style="white-space:nowrap">Attendance check-in</span>') + '</div>' +
+        '</td></tr></table>' +
+      '<div style="clear:both;font-size:0;line-height:0;height:12px">&nbsp;</div>' +
+      '<div style="font-size:24px;font-weight:700;line-height:1.5;margin:0 0 8px">' + esc_(ev.EventName) + '</div>' +
       (opts.noMeta ? '' :
       '<div style="font-size:15px;line-height:1.9">📍 ' + esc_(ev.Location) + '</div>' +
-      '<div style="font-size:15px;line-height:1.9">🗓️ ' + esc_(fmtArDate_(ev.StartDateTime)) + '</div>') +
+      (ev.Sponsor ? '<div style="font-size:15px;line-height:1.9">🤝 برعاية: ' + esc_(ev.Sponsor) + '</div>' : '') +
+      // date and time on separate lines so neither wraps on a phone (v4.5)
+      '<div style="font-size:15px;line-height:1.9">🗓️ ' + esc_(String(fmtArDate_(ev.StartDateTime)).split(' في ')[0]) + '</div>' +
+      (String(ev.StartDateTime || '').length >= 16
+        ? '<div style="font-size:15px;line-height:1.9">🕘 ' + esc_(t12_(String(ev.StartDateTime).slice(11, 16))) +
+          (String(ev.EndDateTime || '').length >= 16 && String(ev.EndDateTime).slice(0, 10) === String(ev.StartDateTime).slice(0, 10) ? ' – ' + esc_(t12_(String(ev.EndDateTime).slice(11, 16))) : '') + '</div>'
+        : '')) +
     '</td></tr>' +
     '<tr><td style="background:#0a6eaa;height:6px;line-height:6px;font-size:0">&nbsp;</td></tr>';
   const badge = opts.check
@@ -658,16 +696,16 @@ function emailShell_(ev, inner, opts) {
 function sendThankYou_(ev, name, email) {
   const inner =
     '<div dir="rtl" style="text-align:center;font-size:17px;color:#241436">شكرًا لانضمامك إلينا <b>' + esc_(name) + '</b> 🌟</div>' +
-    '<div dir="ltr" style="text-align:center;font-size:14px;color:#6b5a80;margin-bottom:16px">Thank you for joining us, ' + esc_(name) + '!</div>' +
+    '<div dir="ltr" style="text-align:center;font-size:14px;color:#6b5a80;margin-bottom:16px">Thank you for joining us, <span dir="rtl">' + esc_(name) + '</span>!</div>' +
     '<div dir="rtl" style="text-align:right;border-top:1px solid #eee8f5;padding-top:14px">يسعدنا حضورك في <b>' + esc_(ev.EventName) + '</b>، ونتمنى لك تجربة مفيدة وممتعة.</div>' +
-    '<div dir="ltr" style="text-align:left;color:#6b5a80;font-size:14px">We are glad to have you at <b>' + esc_(ev.EventName) + '</b> — we hope you enjoy the event.</div>' +
+    '<div dir="ltr" style="text-align:left;color:#6b5a80;font-size:14px">We are glad to have you at <b dir="rtl">' + esc_(ev.EventName) + '</b> — we hope you enjoy the event.</div>' +
     agendaHtml_(parseAgenda_(ev.Agenda));
   MailApp.sendEmail({
     to: email,
     subject: 'شكرًا لحضورك | Thank you for joining — ' + ev.EventName,
     name: SENDER_NAME,
     htmlBody: emailShell_(ev, inner, { check: true }),
-    inlineImages: emailImages_(['sru', 'ictd', 'itoc', 'check']),
+    inlineImages: emailImages_(['sru', 'ictd', 'itoc', 'check', 'mark']),
     body: 'تم تسجيل حضورك بنجاح — ' + ev.EventName + '\nThank you for joining ' + ev.EventName + ', ' + name + '. Your attendance has been recorded.'
   });
 }

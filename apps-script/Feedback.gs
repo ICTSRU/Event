@@ -1,6 +1,6 @@
 /**
  * SRU Event Attendance & Management Platform — Event evaluation (feedback)
- * Version: 4.1
+ * Version: 4.7
  *
  * • One overall-satisfaction question on a 5-point Likert scale + one open question (suggestions)
  * • Personal signed link per attendee (no login, cannot be forged or reused for other e-mails)
@@ -134,7 +134,7 @@ function sendFeedback_(b) {
   });
 
   let quota = MailApp.getRemainingDailyQuota(), sent = 0, failed = 0, skipped = 0;
-  const images = emailImages_(['sru', 'ictd', 'itoc']);
+  const images = emailImages_(['sru', 'ictd', 'itoc', 'mark']);
   list.forEach(function (p) {
     if (quota <= 0) { skipped++; return; }
     try {
@@ -189,13 +189,14 @@ function sendFeedbackMail_(ev, name, email, pageUrl, images, test) {
     '<div dir="rtl" style="text-align:center;font-weight:700;font-size:17px;color:#3a1464;border-top:1px solid #eee8f5;padding-top:14px">' + FB_QUESTION_AR + '</div>' +
     '<div dir="ltr" style="text-align:center;font-size:13px;color:#6b5a80;margin-bottom:8px">' + FB_QUESTION_EN + '</div>' +
     '<table role="presentation" width="100%" cellpadding="0" cellspacing="6" border="0" dir="ltr" style="border-collapse:separate;table-layout:fixed"><tr>' + cells + '</tr></table>' +
-    '<div dir="rtl" style="text-align:center;font-size:13px;color:#6b5a80;margin-top:12px">اضغط على رقم للتقييم، ثم يمكنك كتابة مقترحاتك · Tap a number, then add your suggestions</div>';
+    '<div dir="rtl" style="text-align:center;font-size:13px;color:#6b5a80;margin-top:12px">اضغط على رقم للتقييم، ثم يمكنك كتابة مقترحاتك.</div>' +
+    '<div dir="ltr" style="text-align:center;font-size:12px;color:#6b5a80">Tap a number, then add your suggestions.</div>';
   MailApp.sendEmail({
     to: email,
     subject: (test ? '[نسخة تجريبية · TEST] ' : '') + 'قيّم الفعالية | Rate the event — ' + ev.EventName,
     name: SENDER_NAME,
     htmlBody: emailShell_(ev, inner, { kicker: 'تقييم الفعالية · <span dir="ltr" style="white-space:nowrap">Event evaluation</span>' }),
-    inlineImages: images || emailImages_(['sru', 'ictd', 'itoc']),
+    inlineImages: images || emailImages_(['sru', 'ictd', 'itoc', 'mark']),
     body: FB_QUESTION_AR + '\n' + FB_QUESTION_EN + '\n' + fbLink_(pageUrl, ev, email, 0, test)
   });
 }

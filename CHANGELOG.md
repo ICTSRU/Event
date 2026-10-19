@@ -1,5 +1,53 @@
 # Changelog — SRU Event Attendance & Management Platform
 
+## v4.7 — 2026-10-19
+- **Event sponsor (راعي الفعالية)** — two optional fields in the new/edit event form: sponsor name and sponsor e-mail (format checked in the form and on the server).
+  - Sponsor name appears on: the event page in the admin console (with the e-mail as a mailto link), the check-in page header («برعاية: …»), the thank-you / bulk / evaluation e-mails, and the printed QR poster.
+  - Sponsor e-mail is shown only inside the admin console — it is never sent to the public visitor pages.
+- Backend: new `Sponsor` (N) and `SponsorEmail` (O) columns in `Events` (added automatically on first save).
+- Platform logo: concept 1 (Scan & Check) remains the approved logo (in place since v4.4).
+
+## v4.6 — 2026-10-13
+- **One-step update (`deploy/`)** — no more copying files one by one: `deploy.bat` (Windows, double-click) or `deploy.sh` (Mac) uploads all `apps-script/` files with Google's clasp tool and updates both deployments (A visitors = Anyone, B admin = SRU domain via `appsscript.domain.json`). Deployment URLs do not change. First run: Google sign-in and Script ID (remembered). See `deploy/README.md`.
+- Platform code unchanged from v4.5 except the version number.
+
+## v4.5 — 2026-10-13
+Review of the check-in page and all e-mails (rendered at phone and desktop width).
+- **Check-in & evaluation pages**
+  - Header: logo + «منصة تسجيل حضور وإدارة الفعاليات» + page type on two tidy lines (the label used to wrap mid-phrase on phones).
+  - Date line shows the end time: «الخميس، 15 أكتوبر 2026 في 10:00 ص – 12:00 م».
+  - Agenda times in 12-hour format (10:00 ص / إلى 10:15 ص) instead of 24-hour.
+  - Success, location and date icons are now built in — they no longer depend on the icon CDN (the success circle was empty when it failed to load).
+- **E-mails (thank-you, bulk, evaluation, access)**
+  - Purple header: logo beside the platform name and message type (two lines, no wrapping); date and time on separate lines, with the end time.
+  - Agenda table: two columns (time | item + presenter under it) — the item column was squeezed to one word per line on phones; times as ص/م.
+  - Thank-you: Arabic names and event names isolated inside the English lines.
+  - Evaluation: Arabic and English hints on separate lines.
+  - Access e-mail: clear title «تم منحك صلاحية الدخول», a «الدخول إلى المنصة» button, and the link shown left-to-right (it showed a stray leading «/»).
+
+## v4.4 — 2026-10-13
+- **Platform logo (concept 1 — Scan & Check):** three QR finder squares with a blue check mark, SRU purple #501e8c / blue #0a6eaa.
+  - Admin console and dashboard: logo beside the title in the purple bar.
+  - Live QR full-screen display and printed QR poster: logo above the event name.
+  - Check-in and evaluation pages: logo in the event header; new browser icon (favicon) and iPhone home-screen icon.
+  - Sign-in landing page (`index.html`): app icon instead of the generic logo; new favicon.
+  - All e-mails (thank-you, bulk, evaluation, access): logo in the purple header (inline image `mark`).
+  - Secure pages' browser icon: `FAVICON_URL` = https://ictsru.github.io/Event/favicon.png.
+- New `brand/` folder: `logo-mark.svg`, `logo-mark-white.svg`, `app-icon.svg`, `favicon.svg` (sources) and PNGs — `logo-lockup.png`, `logo-lockup-white.png` (logo + Arabic/English name), `logo-mark-512.png`, `logo-mark-white-512.png`, `app-icon-512.png`, `apple-touch-icon-180.png`, `favicon-64.png`, `email-mark-96.png`.
+- GitHub: new files `favicon.png` and `apple-touch-icon.png` at the repository root.
+
+## v4.3 — 2026-10-13
+- **New role «مستعرض (عرض فقط)» — Viewer.** Choose it in «المستخدمون» or type `viewer` in the AllowedUsers sheet (column C).
+  - Can: open the admin console and the dashboard, view events, the agenda, attendance reports (search, Excel/CSV, print/PDF), QR codes (including the live full-screen display) and evaluation results.
+  - Cannot: create or edit events, open/close registration, send bulk or evaluation e-mails (including test copies), manage users or settings.
+  - The console hides those buttons and the «مراسلة الحضور» tab and shows a read-only notice. The server refuses the same actions (`requireEditor_`), so the limit holds even if the page is altered.
+- Roles: admin = مسؤول النظام · user = منظم فعاليات · viewer = مستعرض (عرض فقط). Unknown values still count as منظم فعاليات.
+
+## v4.2 — 2026-10-13
+- Fix: agenda times disappeared when a new item was added. The browser time field kept a time typed without its AM/PM part as empty, so it was lost when the list was redrawn.
+- Agenda «من / إلى» are now dropdowns in 5-minute steps labelled ص/م (06:00 – 23:55; existing off-grid times are kept), matching the event time picker.
+- Choosing a start time with an empty end fills the end with start + 15 minutes; choosing an end time fills the next item's empty start.
+
 ## v4.1 — 2026-10-13
 - **Auto-close registration (إغلاق التسجيل تلقائيًا)** — per event, in the new/edit event form: Off / at the event end / 15 min / 30 min / 1 hour / 2 hours after the end. New events default to **30 minutes after the end**; existing events stay Off until edited.
   - The form shows the exact closing time; events without an end time count from the start time.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v4.1</title>
+<title>منصة تسجيل حضور وإدارة الفعاليات | Event Attendance &amp; Management — v4.7</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
 <?!= include('Styles') ?>
@@ -49,6 +49,9 @@
   #present .qr-timer{width:min(calc(100vh - 390px),70vw);min-width:220px;height:10px;margin:0}
   #present .cta{background:var(--purple);color:#fff;padding:8px 26px;border-radius:4px;font-size:clamp(18px,2vw,26px);font-weight:700}
   #present .pclose{position:absolute;bottom:16px;inset-inline-start:16px}
+  body.ro .edit-only{display:none!important}
+  .ro-note{display:none}
+  body.ro .ro-note{display:flex;gap:8px;align-items:center;background:#eef4fb;border:1px solid #cfe0f3;color:#1f4f82;border-radius:var(--radius);padding:8px 12px;font-size:13.5px;margin-bottom:12px}
   .link-row{display:flex;gap:6px;margin:8px 0}
   .link-row input{direction:ltr;font-size:13px}
   .actions{display:flex;gap:8px;flex-wrap:wrap}
@@ -62,10 +65,11 @@
   .empty svg{width:42px;height:42px;color:var(--purple);opacity:.6}
   .toolbar{display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap;margin-bottom:10px}
   .toolbar input{max-width:280px}
-  .ag-head,.ag-row{display:grid;grid-template-columns:92px 92px 1fr 190px 98px;gap:6px;align-items:center}
+  .ag-head,.ag-row{display:grid;grid-template-columns:104px 104px 1fr 190px 98px;gap:6px;align-items:center}
   .ag-head{font-size:12.5px;font-weight:700;color:var(--muted);padding:0 2px 4px}
   .ag-row{margin-bottom:6px}
-  .ag-row input{padding:7px 8px}
+  .ag-row input,.ag-row select{padding:7px 8px}
+  .ag-row select{direction:rtl;font-size:13.5px}
   .ag-row .ops{display:flex;gap:3px}
   .ag-row .ops button{border:1px solid var(--border);background:#fff;border-radius:var(--radius);width:30px;height:34px;cursor:pointer;color:var(--purple);display:flex;align-items:center;justify-content:center}
   .ag-row .ops button:hover{background:var(--purple-light)}
@@ -122,13 +126,16 @@
 </header>
 <nav class="navbar no-print">
   <div class="inner">
-    <div>
+    <div class="nav-brand">
+      <img class="nav-mark" data-logo="eventsw" alt="">
+      <div>
       <h1>منصة تسجيل حضور وإدارة الفعاليات</h1>
       <div class="sub en">Event Attendance &amp; Management Platform — Admin Console</div>
+      </div>
     </div>
     <div class="actions" style="align-items:center">
       <span id="demoChip" class="chip demo hidden" title="No API URL configured — data is stored in this browser only">وضع تجريبي · Demo</span>
-      <span class="ver en">v4.1</span>
+      <span class="ver en">v4.7</span>
       <span id="authBox" class="actions" style="align-items:center"></span>
       <a class="btn secondary sm" href="#" data-page="dashboard"><i data-lucide="layout-dashboard"></i> لوحة المؤشرات</a>
       <a class="btn secondary sm hidden" id="btnSheet" target="_blank" rel="noopener" title="Google Sheet"><i data-lucide="sheet"></i> قاعدة البيانات</a>
@@ -148,7 +155,7 @@
     <aside id="sidebar" class="card no-print" style="padding:14px">
       <div class="actions" style="justify-content:space-between;margin-bottom:10px">
         <h2 style="margin:0"><i data-lucide="calendar-days"></i> الفعاليات</h2>
-        <button class="btn sm" id="btnNew"><i data-lucide="plus"></i> فعالية جديدة</button>
+        <button class="btn sm edit-only" id="btnNew"><i data-lucide="plus"></i> فعالية جديدة</button>
       </div>
       <input id="evSearch" placeholder="بحث… / Search" style="margin-bottom:10px">
       <div style="margin-bottom:10px">
@@ -166,6 +173,7 @@
     <section id="main">
 
       <!-- Overview -->
+      <div class="ro-note"><i data-lucide="eye"></i> صلاحيتك <b>مستعرض</b>: يمكنك استعراض الفعاليات وتقارير الحضور ورموز QR ونتائج التقييم، دون إضافة أو تعديل أو إرسال رسائل. <span class="en small">Viewer — read-only</span></div>
       <div id="viewOverview">
         <div class="kpis" id="ovKpis"></div>
         <div class="card">
@@ -194,6 +202,16 @@
             <div>
               <label class="f">الجهة المنظمة <span class="en">Organizer</span></label>
               <input id="fOrganizer" maxlength="120" value="الإدارة التنفيذية للاتصالات وتقنية المعلومات">
+            </div>
+          </div>
+          <div class="grid g2">
+            <div>
+              <label class="f" for="fSponsor">راعي الفعالية <span class="en">Sponsor (optional)</span></label>
+              <input id="fSponsor" maxlength="200" placeholder="مثال: شركة … / عمادة شؤون الطلاب">
+            </div>
+            <div>
+              <label class="f" for="fSponsorEmail">البريد الإلكتروني للراعي <span class="en">Sponsor e-mail</span></label>
+              <input id="fSponsorEmail" type="email" maxlength="160" class="en" style="direction:ltr;text-align:left" placeholder="sponsor@example.com">
             </div>
           </div>
           <!-- Date & time picker (v3.1) — values are written to the hidden fStart / fEnd as YYYY-MM-DDTHH:MM -->
@@ -274,7 +292,7 @@
         <div class="print-head">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <img data-logo="sru" alt="">
-            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v4.1</div></div>
+            <div style="text-align:center"><b>تقرير الحضور · Attendance Report</b><div class="small muted">v4.7</div></div>
             <img data-logo="ictd" alt="">
           </div>
         </div>
@@ -285,8 +303,8 @@
           </div>
           <div class="actions no-print">
             <span id="dStatus"></span>
-            <button class="btn secondary sm" id="btnToggle"></button>
-            <button class="btn secondary sm" id="btnEdit"><i data-lucide="pencil"></i> تعديل</button>
+            <button class="btn secondary sm edit-only" id="btnToggle"></button>
+            <button class="btn secondary sm edit-only" id="btnEdit"><i data-lucide="pencil"></i> تعديل</button>
           </div>
         </div>
 
@@ -294,7 +312,7 @@
         <div class="tabs no-print">
           <button class="tab active" data-tab="qr"><i data-lucide="qr-code"></i> رمز QR</button>
           <button class="tab" data-tab="report"><i data-lucide="clipboard-list"></i> تقرير الحضور</button>
-          <button class="tab" data-tab="email"><i data-lucide="mail"></i> مراسلة الحضور</button>
+          <button class="tab edit-only" data-tab="email"><i data-lucide="mail"></i> مراسلة الحضور</button>
           <button class="tab" data-tab="fb"><i data-lucide="star"></i> تقييم الفعالية</button>
         </div>
 
@@ -350,15 +368,15 @@
               <p class="small muted">يصل لكل مشارك رابط شخصي آمن، ويُحفظ رده في ورقة <span class="en">Feedback</span>، ويظهر في لوحة المؤشرات. من سبق أن قيّم لا تصله الرسالة مرة أخرى.</p>
             </div>
             <div>
-              <h3 style="margin-top:0">إرسال طلب التقييم <span class="en muted small">Send evaluation request</span></h3>
+              <h3 style="margin-top:0" class="edit-only">إرسال طلب التقييم <span class="en muted small">Send evaluation request</span></h3>
               <div id="fbInfo" class="alert info"></div>
               <div id="fbMsg"></div>
-              <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap">
+              <div style="display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap" class="edit-only">
                 <input id="fbTestTo" type="email" class="en" style="flex:1;min-width:200px" placeholder="name@sr.edu.sa" aria-label="Test e-mail address">
                 <button class="btn secondary" id="btnTestFb"><i data-lucide="mail-check"></i> إرسال نسخة تجريبية لي</button>
               </div>
               <div class="actions">
-                <button class="btn" id="btnSendFb"><i data-lucide="send"></i> إرسال طلب التقييم للحضور</button>
+                <button class="btn edit-only" id="btnSendFb"><i data-lucide="send"></i> إرسال طلب التقييم للحضور</button>
                 <a class="btn secondary" href="#" data-page="dashboard"><i data-lucide="layout-dashboard"></i> عرض النتائج</a>
               </div>
               <p class="small muted" style="margin-top:10px"><i data-lucide="zap" style="width:14px;height:14px;vertical-align:-2px"></i> للإرسال التلقائي بعد انتهاء كل فعالية: شغّل الدالة <span class="en">installFeedbackTrigger</span> مرة واحدة من محرر Apps Script.</p>
@@ -397,7 +415,7 @@
 
 <footer class="foot no-print">
   <div class="inner">
-    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v4.1</span></span>
+    <span>جامعة سليمان الراجحي — الإدارة التنفيذية للاتصالات وتقنية المعلومات · <span class="en">Event Attendance &amp; Management Platform v4.7</span></span>
     <a id="itocLink" href="#" target="_blank" rel="noopener"><img data-logo="itoc" alt="ITOC — IT Operations Center"></a>
   </div>
 </footer>
@@ -406,6 +424,7 @@
 
 <div id="present" class="hidden" role="dialog" aria-label="Live QR">
   <div class="pband"><img data-logo="ictd" alt="ICTD"><img data-logo="sru" alt="SRU"></div>
+  <img data-logo="events" alt="" style="width:64px;height:64px">
   <h1 id="pName"></h1>
   <div class="pm" id="pMeta"></div>
   <div id="pQr"></div>
@@ -476,7 +495,7 @@
       $('btnSendFb').disabled = !pending;
     } catch (e) {
       $('fbKpis').innerHTML = '';
-      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v4.1 وانشر نسخة جديدة.' : '');
+      $('fbInfo').innerHTML = esc(e.message) + (/Unknown action/i.test(e.message) ? ' — حدّث ملفات Apps Script إلى v4.7 وانشر نسخة جديدة.' : '');
     }
   }
   $('fbTestTo').value = EA.store('ea_test_email') || EA.cfg.TEST_EMAIL || '';
@@ -527,7 +546,7 @@
     const older = !have || (parseFloat(have) < parseFloat(want));
     $('verWarn').classList.toggle('hidden', !older || EA.isDemo());
     if (older && !EA.isDemo()) $('verWarn').innerHTML =
-      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v4.1') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
+      '<b>تنبيه: كود Apps Script على الخادم أقدم من صفحات المنصة</b> (الخادم: <span class="en">' + esc(have ? 'v' + have : 'قبل v4.7') + '</span> — الصفحات: <span class="en">v' + esc(want) + '</span>). ' +
       'بعض الميزات الجديدة لن تُحفظ حتى تحدّث الخادم: استبدل ملفات <span class="en">Code.gs / Feedback.gs / EmailAssets.gs</span> في محرر Apps Script، ثم <span class="en">Deploy → Manage deployments → ✏️ Edit → Version: New version → Deploy</span>.';
   }
 
@@ -587,6 +606,8 @@
     $('fName').value = e ? e.name : '';
     $('fLocation').value = e ? e.location : '';
     $('fOrganizer').value = e ? (e.organizer || '') : 'الإدارة التنفيذية للاتصالات وتقنية المعلومات';
+    $('fSponsor').value = e ? (e.sponsor || '') : '';
+    $('fSponsorEmail').value = e ? (e.sponsorEmail || '') : '';
     setPicker(e ? String(e.start).slice(0, 16).replace(' ', 'T') : '', e ? String(e.end || '').slice(0, 16).replace(' ', 'T') : '');
     $('fDesc').value = e ? (e.description || '') : '';
     agenda = e && Array.isArray(e.agenda) ? e.agenda.map(a => Object.assign({}, a)) : [];
@@ -639,6 +660,7 @@
     const data = {
       id: $('fId').value, name: $('fName').value.trim(), location: $('fLocation').value.trim(),
       organizer: $('fOrganizer').value.trim(), start: $('fStart').value, end: $('fEnd').value,
+      sponsor: $('fSponsor').value.trim(), sponsorEmail: $('fSponsorEmail').value.trim(),
       description: $('fDesc').value.trim(),
       agenda: readAgenda().filter(a => a.title),
       qrStep: qrStepSel, dynamicQr: qrStepSel > 0,
@@ -646,6 +668,7 @@
     };
     const badTime = data.agenda.find(a => a.from && a.to && a.to < a.from);
     if (badTime) return msg('formMsg', 'err', 'في البرنامج: وقت نهاية الفقرة «' + badTime.title + '» قبل وقت بدايتها.');
+    if (data.sponsorEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.sponsorEmail)) return msg('formMsg', 'err', 'البريد الإلكتروني للراعي غير صحيح.');
     if (!data.name || !data.location || !data.start) return msg('formMsg', 'err', 'يرجى تعبئة الحقول الإلزامية: الاسم، المكان، تاريخ الفعالية ووقت البدء.');
     if (data.end && data.end <= data.start) return msg('formMsg', 'err', 'وقت الانتهاء يجب أن يكون بعد وقت البدء.');
     if (data.end && data.end < data.start) return msg('formMsg', 'err', 'وقت الانتهاء يجب أن يكون بعد وقت البدء.');
@@ -658,9 +681,11 @@
       if (data.agenda.length && saved && !(saved.agenda || []).length)
         toast('⚠️ حُفظت الفعالية لكن البرنامج لم يُحفظ — حدّث Code.gs على الخادم (انظر التنبيه أعلى الصفحة)');
       else if (saved && (data.qrStep || 0) !== (saved.dynamicQr ? (saved.qrStep || 0) : 0))
-        toast('⚠️ لم تُحفظ مدة تجدد رمز QR — حدّث Code.gs إلى v4.1 وانشر نسخة جديدة');
+        toast('⚠️ لم تُحفظ مدة تجدد رمز QR — حدّث Code.gs إلى v4.7 وانشر نسخة جديدة');
       else if (saved && String(saved.autoCloseMin == null ? '' : saved.autoCloseMin) !== String(data.autoCloseMin))
-        toast('⚠️ لم يُحفظ الإغلاق التلقائي — حدّث Code.gs إلى v4.1 وانشر نسخة جديدة');
+        toast('⚠️ لم يُحفظ الإغلاق التلقائي — حدّث Code.gs إلى v4.7 وانشر نسخة جديدة');
+      else if (saved && data.sponsor && saved.sponsor !== data.sponsor)
+        toast('⚠️ لم يُحفظ راعي الفعالية — حدّث Code.gs إلى v4.7 وانشر نسخة جديدة');
     } catch (e) { msg('formMsg', 'err', e.message); }
     busy(b, false);
   };
@@ -778,11 +803,21 @@
       title: r.querySelector('.t').value.trim(), speaker: r.querySelector('.s').value.trim()
     }));
   }
+  /* Agenda times (v4.2): dropdowns in 5-minute steps (ص/م) instead of the browser time field,
+     which lost values typed without the AM/PM part when a new item was added */
+  const AG_TIMES = (() => { const a = []; for (let m = 6 * 60; m < 24 * 60; m += 5) a.push(String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0')); return a; })();
+  function agTimeSelect(cls, val, label) {
+    val = /^\d{2}:\d{2}$/.test(val || '') ? val : '';
+    const list = val && AG_TIMES.indexOf(val) < 0 ? AG_TIMES.concat(val).sort() : AG_TIMES;
+    return '<select class="' + cls + '" aria-label="' + label + '"><option value="">— الوقت —</option>' +
+      list.map(t => '<option value="' + t + '"' + (t === val ? ' selected' : '') + '>' + t12(t) + '</option>').join('') + '</select>';
+  }
+  function addMin(t, n) { if (!t) return ''; const m = Math.min(24 * 60 - 5, +t.slice(0, 2) * 60 + +t.slice(3, 5) + n); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
   function renderAgendaRows(focusIdx) {
     $('agRows').innerHTML = agenda.length ? agenda.map((a, i) =>
       '<div class="ag-row" data-i="' + i + '">' +
-      '<input type="time" class="f1" value="' + esc(a.from || '') + '" aria-label="From">' +
-      '<input type="time" class="f2" value="' + esc(a.to || '') + '" aria-label="To">' +
+      agTimeSelect('f1', a.from, 'From') +
+      agTimeSelect('f2', a.to, 'To') +
       '<input class="t" maxlength="200" placeholder="عنوان الفقرة — مثال: كلمة افتتاحية" value="' + esc(a.title || '') + '" aria-label="Item">' +
       '<input class="s" maxlength="120" placeholder="اسم المقدّم (اختياري)" value="' + esc(a.speaker || '') + '" aria-label="Presenter">' +
       '<span class="ops">' +
@@ -797,7 +832,7 @@
     agenda = readAgenda();
     if (agenda.length >= 40) return msg('formMsg', 'err', 'الحد الأقصى 40 فقرة.');
     const last = agenda[agenda.length - 1];
-    let from = last && last.to ? last.to : '';
+    let from = last ? (last.to || '') : '';
     if (!from && !last && $('fStart').value) from = $('fStart').value.slice(11, 16);   // first item starts with the event
     agenda.push({ from: from, to: '', title: '', speaker: '' });
     renderAgendaRows(agenda.length - 1);
@@ -811,6 +846,13 @@
     if (op === 'down' && i < agenda.length - 1) [agenda[i + 1], agenda[i]] = [agenda[i], agenda[i + 1]];
     renderAgendaRows();
   };
+  // Choosing a time: an empty "to" gets start + 15 min; a new "to" pre-fills the next item's empty "from"
+  $('agRows').addEventListener('change', (ev) => {
+    const sel = ev.target, row = sel.closest('.ag-row'); if (!row || !sel.matches('select')) return;
+    const setSel = (el, v) => { if (!el || !v) return; if (![...el.options].some(o => o.value === v)) el.insertAdjacentHTML('beforeend', '<option value="' + v + '">' + t12(v) + '</option>'); el.value = v; };
+    if (sel.classList.contains('f1') && sel.value && !row.querySelector('.f2').value) setSel(row.querySelector('.f2'), addMin(sel.value, 15));
+    if (sel.classList.contains('f2') && sel.value) { const nx = row.nextElementSibling; if (nx && nx.querySelector && !nx.querySelector('.f1').value) setSel(nx.querySelector('.f1'), sel.value); }
+  });
   // Enter in the last field adds the next item
   $('agRows').addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter' && ev.target.matches('.s, .t')) { ev.preventDefault(); $('btnAddAg').click(); }
@@ -832,6 +874,7 @@
       '<span><i data-lucide="map-pin"></i> ' + esc(e.location) + '</span>' +
       '<span><i data-lucide="clock"></i> ' + esc(fmt(e.start)) + (e.end ? ' → ' + esc(timeOnly(e.end)) : '') + '</span>' +
       (e.organizer ? '<span><i data-lucide="building-2"></i> ' + esc(e.organizer) + '</span>' : '') +
+      (e.sponsor ? '<span><i data-lucide="handshake"></i> برعاية: ' + esc(e.sponsor) + (e.sponsorEmail ? ' · <a class="en" href="mailto:' + esc(e.sponsorEmail) + '">' + esc(e.sponsorEmail) + '</a>' : '') + '</span>' : '') +
       '<span class="en"><i data-lucide="hash"></i> ' + esc(e.id) + '</span>';
     $('dAgenda').innerHTML = agendaTable(e.agenda);
     $('dStatus').innerHTML = statusChip(e.status) + autoCloseNote(e);
@@ -971,11 +1014,11 @@
       '.qr img{width:' + (((e.agenda || []).length > 5) ? '260px;height:260px' : '330px;height:330px') + '!important}' +
       '.cta{background:#501e8c;color:#fff;display:inline-block;padding:10px 26px;border-radius:4px;font-size:22px;font-weight:700}.en{direction:ltr;font-size:16px;color:#6b5a80;margin-top:6px}.f{margin-top:30px;font-size:12px;color:#6b5a80}' +
       '</style></head><body><div class="band"><img src="' + logo('logo-ictd.png') + '" onerror="this.style.visibility=\'hidden\'"><img src="' + logo('logo-sru.png') + '" onerror="this.style.visibility=\'hidden\'"></div>' +
-      '<h1>' + esc(e.name) + '</h1><div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
+      '<img src="' + ((window.ITOC_LOGOS || {}).events || '') + '" style="width:70px;height:70px;margin-top:22px" alt="">' + '<h1 style="margin-top:8px">' + esc(e.name) + '</h1>' + (e.sponsor ? '<div class="m" style="margin-bottom:6px">برعاية: <b>' + esc(e.sponsor) + '</b></div>' : '') + '<div class="m">📍 ' + esc(e.location) + ' &nbsp; | &nbsp; 🗓 ' + esc(fmt(e.start)) + '</div>' +
       '<div class="qr"><img src="' + qrDataUrl() + '"></div><div class="cta">امسح الرمز لتسجيل حضورك</div><div class="en">Scan to register your attendance</div>' +
       ((e.agenda || []).length ? '<table class="ag"><tr><th>الوقت</th><th>البرنامج</th><th>المقدّم</th></tr>' + e.agenda.slice(0, 10).map(a =>
         '<tr><td>' + agTime(a) + '</td><td><b>' + esc(a.title) + '</b></td><td>' + esc(a.speaker || '') + '</td></tr>').join('') + '</table>' : '') +
-      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v4.1</div>' +
+      '<div class="f">الإدارة التنفيذية للاتصالات وتقنية المعلومات — ' + esc(e.id) + ' · v4.7</div>' +
       '<script>window.onload=function(){setTimeout(function(){window.print()},400)}<\/script></body></html>');
     w.document.close();
   };
@@ -1020,7 +1063,7 @@
         (a.thankYou === 'Yes' ? '<span class="chip open">✓</span>' : '<span class="chip closed">' + esc(a.thankYou || '—') + '</span>') + '</td></tr>').join('')
         : '<tr><td colspan="5" class="empty">لا يوجد حضور مسجل بعد · No check-ins yet</td></tr>') +
       '</tbody></table></div>' +
-      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v4.1</p>';
+      '<p class="small muted" style="margin-top:10px">تاريخ إصدار التقرير: ' + esc(new Date().toLocaleString('ar-SA-u-ca-gregory-nu-latn', { dateStyle: 'medium', timeStyle: 'short' })) + ' · v4.7</p>';
   }
 
   $('btnCsv').onclick = () => {
@@ -1088,6 +1131,8 @@
   refreshMode(); icons();
   EA.auth.require(user => {
     if (!$('fbTestTo').value || $('fbTestTo').value === (EA.cfg.TEST_EMAIL || '')) $('fbTestTo').value = user.email;
+    // v4.3: read-only console for viewers (the server refuses changes as well)
+    document.body.classList.toggle('ro', user.role === 'viewer');
     loadEvents();
   });
 })();

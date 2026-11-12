@@ -26,7 +26,10 @@
   /* "Skip this screen next time" — per-browser preference; open with #login to show this screen again */
   (function () {
     try {
-      if (location.hash !== "#login" && localStorage.getItem(CONFIG.KEY + "_skip_intro") === "1" && /^https:\/\/script\.google\.com\//.test(WEB_APP_URL)) location.replace(WEB_APP_URL);
+      /* ITOC single sign-on: one shared flag for every landing page on ictsru.github.io (valid 30 days; #sso-off clears it) */
+      var ssoOk = (Date.now() - (+localStorage.getItem("itoc_sso") || 0)) < 2592000000;
+      if (location.hash === "#sso-off") { localStorage.removeItem("itoc_sso"); ssoOk = false; }
+      if (location.hash !== "#login" && location.hash !== "#sso-off" && (localStorage.getItem(CONFIG.KEY + "_skip_intro") === "1" || ssoOk) && /^https:\/\/script\.google\.com\//.test(WEB_APP_URL)) { localStorage.setItem("itoc_sso", String(Date.now())); location.replace(WEB_APP_URL); }
     } catch (e) {}
   })();
 </script>
@@ -196,6 +199,7 @@ body>.sru-footer{flex:none}
 
 <script>
   var go = document.getElementById("go"), skip = document.getElementById("skip");
+  go.addEventListener("click", function () { try { localStorage.setItem("itoc_sso", String(Date.now())); } catch (e) {} });
   if (!/^https:\/\/script\.google\.com\//.test(WEB_APP_URL)) {
     go.removeAttribute("href"); go.style.opacity = ".6"; go.style.cursor = "not-allowed";
     go.insertAdjacentHTML("afterend", '<p style="color:#b3261e;font-size:.85rem;margin:8px 0 0">لم يُضبط رابط المنصة بعد — ضع رابط النشر الآمن في CONFIG.WEB_APP_URL داخل index.html.</p>');
